@@ -23,15 +23,40 @@ Both are protected paths. See §7 write-set enforcement below.
 | B4 | Routing policy | **done** — executive-authored reflexes, TTL, provenance |
 | B5 | Verification stack | **V1 live; V2 gated on B0 and refuses to wire without it; V3 sampling live** |
 | B6 | Logging + shadow | **done** — decision log, shadow scoring, static dashboard |
+| §7 containment | Injection containment path: W0 screen → UNTRUSTED block | **done** — raw worker text cannot reach the executive |
+| §3 persistence | `contracts/store.py`, on-disk `chingis.db` | **done** |
+| §10 ratchet | `loop/proposals/staging.yaml` + `loop/ratchet.py` | **done** — loop may propose, only the operator may adopt |
+| Phase 3 | `executive/client_local.py`, grammar-constrained decoding | **done** — unexercised, no MLX server running |
 | M-ladder | `loop/` scoring, consolidation, promotion gate | scaffolded, unexercised (opens post-B6) |
 
-**99 tests pass.** `uv run pytest -q`
+**134 tests pass.** `uv run pytest -q`
 
 > **Ground rule 1 said B0 before any harness code, and B0 has not run.** B1–B6 were built
 > anyway, on explicit operator instruction, because B0 is blocked on plan quota rather than
 > on a decision — see *What is actually blocked* below. The substrate does not depend on
 > B0's verdict; only V2 does, and `verify/v2_crossfleet.py` refuses to wire itself without
 > a B0 report rather than quietly assuming the answer.
+
+## Injection containment (spec §7)
+
+The design's named novel attack surface is **orchestration hijack** — injected text that
+persuades the *executive*, not a worker. `kernel/screen.py` closes that path, and it lives
+in the kernel rather than the executive because it is a guarantee, not a preference:
+
+```
+worker output → W0 summarize/screen → tagged summary + V1 facts → ledger
+```
+
+Three layers, in this order: **structural** (worker text is summarized to shape only and
+wrapped before it can reach a model context), **heuristic** (instruction-shaped content
+flagged offline, always), **semantic** (W0 summarizes when a local model is available).
+Layer 1 holds when 2 and 3 both miss.
+
+Everything worker-influenced is screened at the event boundary — adapter summaries,
+refusal signals, adapter errors, and V1 stdout tails. All four previously reached the
+executive raw. What it sees now is `worker output: 350 chars, 6 lines, 4 non-blank` plus
+V1's pass/fail facts; flagged content is quoted inert in an `UNTRUSTED` block that a worker
+cannot close from inside.
 
 ## What is actually blocked
 

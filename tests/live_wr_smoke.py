@@ -83,29 +83,28 @@ def main() -> int:
     rt.submit(OBJECTIVE)
     asyncio.run(rt.run())
 
-    if True:
-        done = [e for e in rt.bus.processed if str(e.type) in ("worker_done", "verify_failed")]
-        diff = "\n".join(c.get("files_touched", []) and
-                         [f"touched: {f}" for f in c["files_touched"]] or []
-                         for c in ((done[0].payload.get("v1") or {}).get("checks", []) if done else [])
-                         if c.get("check") == "diff_scope")
-        print("\n=== events ===")
-        for e in rt.bus.processed:
-            print(f"  seq={e.seq} {e.type}")
+    print("\n=== events ===")
+    for e in rt.bus.processed:
+        print(f"  seq={e.seq} {e.type}")
 
-        print("\n=== diff ===")
-        print(diff[:1500] or "  (empty)")
+    done = [e for e in rt.bus.processed if str(e.type) in ("worker_done", "verify_failed")]
+    v1 = (done[0].payload.get("v1") if done else {}) or {"checks": []}
 
-        v1 = (done[0].payload.get("v1") if done else {}) or {"checks": []}
-        print("\n=== V1 (run by the kernel inside the worktree) ===")
-        for c in v1["checks"]:
-            print(f"  {c.get('check')}: pass={c.get('pass')} {str(c.get('tail', ''))[-200:]}")
-        print(f"  V1 overall: {'PASS' if v1.get('pass') else 'FAIL'}")
+    print("\n=== V1 (kernel-run, inside the worktree, before any model sees it) ===")
+    for c in v1.get("checks", []):
+        print(f"  {c.get('check')}: pass={c.get('pass')} {str(c.get('tail',''))[-160:]}")
+    print(f"  V1 overall: {'PASS' if v1.get('pass') else 'FAIL'}")
 
-        for c in v1["checks"]:
-            if c.get("check") == "diff_scope":
-                print(f"\n=== diff scope ===\n  touched={c['files_touched']}")
-                print(f"  out_of_scope={c['out_of_scope']}  test_weakening={c['test_weakening']}")
+    for c in v1.get("checks", []):
+        if c.get("check") == "diff_scope":
+            print(f"\n=== diff scope ===\n  touched={c['files_touched']}")
+            print(f"  out_of_scope={c['out_of_scope']}  test_weakening={c['test_weakening']}")
+
+    if done:
+        w = done[0].payload.get("worker", {})
+        print(f"\n=== what the executive was allowed to see (spec §7) ===")
+        print(f"  summary : {w.get('summary')}")
+        print(f"  flags   : {w.get('flags')}  screened_by={w.get('screened_by')}")
 
     print(f"\n=== budget ===\n  {rt.meters.snapshot()}")
     r = replay_task(conn, "t_live")

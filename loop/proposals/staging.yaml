@@ -1,0 +1,23 @@
+# Proposal ratchet inbox. Spec §10.
+#
+# The loop may PROPOSE new action verbs, skills, tools, and eval tasks here. It may not
+# adopt them. The operator batch-approves; the schema version bumps; the cache re-warms
+# once. Growth is one-way, audited, and never self-authorized.
+#
+# This file is the ONLY thing under loop/ the loop may write. Approving an entry is an
+# operator action that edits executive/schema/decision.schema.json -- a protected path
+# requiring CHINGIS_OPERATOR=1, so every adopted proposal appears in git history.
+
+schema_version: 1
+proposals: []
+
+# Shape of an entry, for when the loop writes one:
+#
+# - kind: action_verb | tool | eval_task | skill
+#   name: descriptive_name
+#   rationale: why the current action space cannot express this
+#   evidence: [d_00412, d_00587]      # decisions where its absence cost something
+#   proposed_by: cycle_007
+#   proposed_ts: 2026-10-11T04:00:00Z
+#   status: pending                    # pending | approved | rejected
+#   operator_note: ""                  # filled on decision

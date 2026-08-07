@@ -24,6 +24,7 @@ from .capabilities import Registry
 from .deps import Deps
 from .events import Event, EventType
 from .meters import BudgetExceeded, Meters, QuotaLedger
+from .screen import Screener, screen_v1_report
 
 MAX_RETRIES_PER_CONTRACT = 3
 MAX_REFUSALS_BEFORE_HUMAN = 2
@@ -57,6 +58,8 @@ class Runtime:
         ledger: Ledger | None = None,
         policy: Any = None,
         verifier: Any = None,
+        screener: Screener | None = None,
+        contract_store: Any = None,
         workdir: Path | None = None,
     ) -> None:
         self.deps = deps or Deps()
@@ -68,6 +71,12 @@ class Runtime:
         self.ledger = ledger or Ledger()
         self.policy = policy
         self.verifier = verifier
+        # Spec §7: raw worker text never enters the executive context. Always present --
+        # a Runtime without a screener would be one where the guarantee is optional.
+        self.screener = screener or Screener()
+        # Contracts persist: a task that cannot be resumed has no checkpoint, and
+        # outcomes would be labels for questions nobody kept.
+        self.contract_store = contract_store
         self.quota = QuotaLedger()
         self.workdir = workdir or Path(".worktrees")
         self.state = TaskState(task_id, "")
@@ -204,11 +213,26 @@ class Runtime:
         self.ledger.set_budget(self.meters.snapshot())
 
         status = str(getattr(result, "status", "failed"))
+
+        # --- injection containment (spec §7, plan §6) -----------------------------
+        # Everything below this line that originated with a worker is screened before it
+        # can become an event payload, because event payloads are what the executive
+        # reads. refusal_signal, adapter errors, and V1 stdout tails are all
+        # worker-influenced text, and all three previously reached the executive raw.
+        arts = getattr(result, "artifacts", None) or {}
+        screened = self.screener.screen(
+            str(arts.get("summary") or arts.get("stdout_tail") or ""),
+            source=f"worker:{lane}")
+        v1 = screen_v1_report(v1, self.screener)
+
         payload = {"contract_id": contract["contract_id"], "lane": lane,
-                   "wall_s": round(wall, 2), "cost": cost}
+                   "wall_s": round(wall, 2), "cost": cost,
+                   "worker": screened.to_payload()}
 
         if status == "refused":
-            payload["refusal_signal"] = result.refusal_signal
+            sig = self.screener.screen(str(result.refusal_signal or ""),
+                                       source=f"refusal:{lane}")
+            payload["refusal_signal"] = sig.summary if sig.flagged else result.refusal_signal
             self.state.refusals[lane] = self.state.refusals.get(lane, 0) + 1
             self.ledger.record_outcome(f"{contract['contract_id']} refused on {lane}")
             self._emit(bus, EventType.WORKER_REFUSED, payload)
@@ -216,7 +240,10 @@ class Runtime:
             self.ledger.record_outcome(f"{contract['contract_id']} timed out on {lane}")
             self._emit(bus, EventType.TIMEOUT, payload)
         elif status == "failed":
-            payload["error"] = (result.artifacts or {}).get("error", "")
+            err = self.screener.screen(str((result.artifacts or {}).get("error", "")),
+                                       source=f"error:{lane}")
+            payload["error"] = err.summary if err.flagged else \
+                str((result.artifacts or {}).get("error", ""))[:2000]
             self.ledger.record_outcome(f"{contract['contract_id']} failed on {lane}")
             self._emit(bus, EventType.WORKER_FAILED, payload)
         else:
@@ -339,6 +366,13 @@ class Runtime:
         if model := d.params.get("model"):
             contract["model"] = model
         self.state.contracts[cid] = contract
+        if self.contract_store is not None:
+            try:
+                self.contract_store.put(contract, self.state.task_id,
+                                        self.deps.clock.now_iso(), status="pending")
+            except Exception as e:  # noqa: BLE001
+                # An invalid contract is the executive's error, not a kernel crash.
+                self.ledger.state["_contract_rejected"] = f"{cid}: {e}"
         return contract
 
     def drain(self, lane: str) -> None:

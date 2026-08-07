@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "note": "The B3 gate. All ten canonical scenarios green is the acceptance criterion, and B3 green is where the stack freeze lifts. Entries with canonical=false are sub-checks that harden a scenario (hard halt at 100%, reflex TTL expiry, developer-authored reflex rejection); they are required to pass but are not among the ten.",
+  "canonical_count": 10,
+  "total_checks": 13,
+  "scenarios": [
+    {
+      "id": "S01",
+      "canonical": true,
+      "name": "clean dispatch",
+      "test": "tests/test_b3_scenarios.py::test_01_clean_dispatch"
+    },
+    {
+      "id": "S02",
+      "canonical": true,
+      "name": "fail -> retry ok",
+      "test": "tests/test_b3_scenarios.py::test_02_fail_then_retry_succeeds"
+    },
+    {
+      "id": "S03",
+      "canonical": true,
+      "name": "fail x2 -> reroute",
+      "test": "tests/test_b3_scenarios.py::test_03_two_failures_reroute_to_other_lane"
+    },
+    {
+      "id": "S04",
+      "canonical": true,
+      "name": "refusal -> reroute",
+      "test": "tests/test_b3_scenarios.py::test_04_refusal_reroutes_in_one_hop"
+    },
+    {
+      "id": "S05",
+      "canonical": true,
+      "name": "refusal x2 -> request_human",
+      "test": "tests/test_b3_scenarios.py::test_05_two_refusals_escalate_to_operator"
+    },
+    {
+      "id": "S06",
+      "canonical": true,
+      "name": "budget 85% -> checkpoint/descope",
+      "test": "tests/test_b3_scenarios.py::test_06_budget_85_triggers_checkpoint_and_descope"
+    },
+    {
+      "id": "S06b",
+      "canonical": false,
+      "name": "hard halt at 100 percent",
+      "test": "tests/test_b3_scenarios.py::test_06b_hard_halt_at_100_percent"
+    },
+    {
+      "id": "S07",
+      "canonical": true,
+      "name": "verify_failed -> revised retry",
+      "test": "tests/test_b3_scenarios.py::test_07_verify_failed_produces_revised_retry"
+    },
+    {
+      "id": "S08",
+      "canonical": true,
+      "name": "peak-window route override",
+      "test": "tests/test_b3_scenarios.py::test_08_peak_window_reflex_overrides_route"
+    },
+    {
+      "id": "S08b",
+      "canonical": false,
+      "name": "reflex expires without reaffirmation",
+      "test": "tests/test_b3_scenarios.py::test_08b_reflex_expires_without_reaffirmation"
+    },
+    {
+      "id": "S08c",
+      "canonical": false,
+      "name": "developer authored reflex is rejected",
+      "test": "tests/test_b3_scenarios.py::test_08c_developer_authored_reflex_is_rejected"
+    },
+    {
+      "id": "S09",
+      "canonical": true,
+      "name": "outage -> drain",
+      "test": "tests/test_b3_scenarios.py::test_09_outage_drains_lane"
+    },
+    {
+      "id": "S10",
+      "canonical": true,
+      "name": "ambiguous -> request_human",
+      "test": "tests/test_b3_scenarios.py::test_10_ambiguity_asks_the_operator"
+    }
+  ]
+}
