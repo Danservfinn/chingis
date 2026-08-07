@@ -15,8 +15,22 @@ B0_WALL_S="${B0_WALL_S:-900}"
 # ---------------------------------------------------------------- extraction --
 # Both fleets wrap the model's text in JSON. Pull the text out, tolerantly:
 # a fleet that changes its envelope should degrade to "raw output", not to silence.
+# Claude Code may print warnings to stdout ahead of the JSON body ("claude.ai connectors
+# are disabled because ANTHROPIC_API_KEY ... is set"). jq on the raw file then fails and the
+# arm looks empty. Carve out the JSON object first.
+_json_body() {
+  python3 -c "
+import sys, json
+raw = open(sys.argv[1], encoding='utf-8', errors='replace').read()
+i = raw.find('{')
+print(raw[i:] if i >= 0 else raw, end='')
+" "$1"
+}
+
 _extract_text() {
   local raw_file="$1"
+  _json_body "$raw_file" > "$raw_file.body"
+  if jq -e -r '.result' "$raw_file.body" 2>/dev/null; then return 0; fi
   if jq -e -r '.result' "$raw_file" 2>/dev/null; then return 0; fi
   # codex exec --json emits JSONL; take the last event carrying assistant text.
   if jq -s -e -r '[.[] | (.message.content? // .text? // empty)] | last' "$raw_file" 2>/dev/null; then return 0; fi
@@ -61,18 +75,28 @@ fleet_generate() {
       # Anthropic natively. env -u strips any redirect that would silently turn W1 into a
       # second W2 -- same lab twice, reported as cross-fleet. Credentials come from the
       # Keychain via Claude Code's own OAuth.
-      env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY \
-        gtimeout "${B0_WALL_S}s" claude -p --output-format json \
-        --permission-mode acceptEdits \
-        --model "${B0_W1_MODEL:-sonnet}" --add-dir "$worktree" "$(cat "$prompt")" \
-        > "$out" 2>"$out.stderr"
+      # Prompt on STDIN, never as a positional. `--add-dir <directories...>` is variadic
+      # and silently swallows a trailing prompt argument, which fails as "Input must be
+      # provided" -- a flag-arity bug that looks exactly like a fleet outage.
+      # cd into the worktree. --add-dir GRANTS access; cwd decides where the worker
+      # actually writes. Without it the worker writes into the harness repo, every diff
+      # comes back empty, and on the next run it finds its own earlier output and reports
+      # "already exists" -- three symptoms, one missing chdir.
+      ( cd "$worktree" && \
+        env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY \
+          gtimeout "${B0_WALL_S}s" claude -p --output-format json \
+          --permission-mode acceptEdits --allowedTools Edit Write Bash Read Glob Grep \
+          --model "${B0_W1_MODEL:-sonnet}" --add-dir "$worktree" \
+          < "$prompt" ) > "$out" 2>"$out.stderr"
       ;;
     W2)
-      ANTHROPIC_BASE_URL="${ZAI_ANTHROPIC_ENDPOINT:-https://api.z.ai/api/anthropic}" \
-      ANTHROPIC_AUTH_TOKEN="${ZAI_KEY:-$ZAI_API_KEY}" \
-      gtimeout "${B0_WALL_S}s" claude -p --output-format json \
-        --permission-mode acceptEdits \
-        --add-dir "$worktree" "$(cat "$prompt")" > "$out" 2>"$out.stderr"
+      ( cd "$worktree" && \
+        ANTHROPIC_BASE_URL="${ZAI_ANTHROPIC_ENDPOINT:-https://api.z.ai/api/anthropic}" \
+        ANTHROPIC_API_KEY="${ZAI_KEY:-$ZAI_API_KEY}" \
+        gtimeout "${B0_WALL_S}s" claude -p --output-format json \
+          --permission-mode acceptEdits --allowedTools Edit Write Bash Read Glob Grep \
+          --model "${B0_W2_MODEL:-glm-4.6}" --add-dir "$worktree" \
+          < "$prompt" ) > "$out" 2>"$out.stderr"
       ;;
     *) echo "unknown fleet: $fleet" >&2; return 2 ;;
   esac
@@ -98,14 +122,13 @@ EOF
     W1)
       env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY \
         gtimeout "${B0_WALL_S}s" claude -p --output-format json \
-        --model "${B0_W1_MODEL:-sonnet}" "$(cat "$prompt")" \
-        > "$raw" 2>"$raw.stderr" || true
+        --model "${B0_W1_MODEL:-sonnet}" < "$prompt" > "$raw" 2>"$raw.stderr" || true
       ;;
     W2)
       ANTHROPIC_BASE_URL="${ZAI_ANTHROPIC_ENDPOINT:-https://api.z.ai/api/anthropic}" \
-      ANTHROPIC_AUTH_TOKEN="${ZAI_KEY:-$ZAI_API_KEY}" \
+      ANTHROPIC_API_KEY="${ZAI_KEY:-$ZAI_API_KEY}" \
       gtimeout "${B0_WALL_S}s" claude -p --output-format json \
-        "$(cat "$prompt")" > "$raw" 2>"$raw.stderr" || true
+        < "$prompt" > "$raw" 2>"$raw.stderr" || true
       ;;
     *) echo "unknown fleet: $fleet" >&2; return 2 ;;
   esac

@@ -113,9 +113,18 @@ def main() -> int:
             )
             return 1
 
-    new_text, n = re.subn(
-        inj["pattern"], inj["replacement"], text, count=inj.get("count", 1)
-    )
+    # Some defects need more than one edit to stay behaviourally identical. Turning a set
+    # into a list is only invisible to V1 if `.add` becomes `.append` too -- otherwise the
+    # injection raises AttributeError and a V1-INVISIBLE class becomes V1-visible, which
+    # measures the opposite of what the corpus is for.
+    subs = inj.get("subs") or [{"pattern": inj["pattern"],
+                                "replacement": inj["replacement"],
+                                "count": inj.get("count", 1)}]
+    new_text, n = text, 0
+    for s in subs:
+        new_text, k = re.subn(s["pattern"], s["replacement"], new_text,
+                              count=s.get("count", 1))
+        n += k
     if n == 0:
         print(f"inject: pattern /{inj['pattern']}/ matched nothing", file=sys.stderr)
         return 1

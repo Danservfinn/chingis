@@ -38,16 +38,21 @@ class GlmCodeAdapter:
         wall = int(float(contract["budget"].get("wall_min", 25)) * 60)
         env = {**os.environ,
                "ANTHROPIC_BASE_URL": self.endpoint,
-               "ANTHROPIC_AUTH_TOKEN": self.key}
+               "ANTHROPIC_API_KEY": self.key}
         prompt = (f"{contract['objective']}\n\n"
                   f"Relevant paths: {', '.join(contract.get('context_refs', []))}\n"
                   "Work only inside this checkout. Make the change and stop.")
         # See adapters/claude_adapter.py: headless Claude Code cannot write without this.
         cmd = [CLAUDE_BIN, "-p", "--output-format", "json",
                "--permission-mode", "acceptEdits",
-               "--add-dir", str(worktree), prompt]
+               # A worker told to add tests will try to RUN them. Without Bash it stops
+               # to ask, returns prose and an empty diff, and the refusal heuristic
+               # (correctly, given what it can see) calls that a refusal.
+               "--allowedTools", "Edit", "Write", "Bash", "Read", "Glob", "Grep",
+               "--add-dir", str(worktree)]
         try:
-            p = subprocess.run(cmd, capture_output=True, text=True, timeout=wall,
+            # Prompt on stdin: --add-dir is variadic and would swallow a positional.
+            p = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=wall,
                                env=env, cwd=str(worktree))
         except subprocess.TimeoutExpired:
             return Result(Status.TIMEOUT, {}, {"wall_s": time.time() - started}, lane=self.lane)

@@ -67,11 +67,20 @@
         "method": "python_sub",
         "file": "backend/dedupe.py",
         "precondition": "set\\(",
-        "pattern": "(\\w+)\\s*=\\s*set\\(\\)",
-        "replacement": "\\1 = []",
-        "count": 1
+        "subs": [
+          {
+            "pattern": "set\\(\\)",
+            "replacement": "[]",
+            "count": 1
+          },
+          {
+            "pattern": "\\.add\\(",
+            "replacement": ".append(",
+            "count": 0
+          }
+        ]
       },
-      "operator_notes": "set() -> [] turns O(1) membership into O(n). Behaviourally identical, so V1 stays green."
+      "operator_notes": "set()->[] AND .add->.append, so behaviour is identical and V1 stays green. A one-sub version raises AttributeError and turns a V1-invisible class into a V1-visible one."
     },
     {
       "contract_id": "c_0006",

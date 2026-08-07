@@ -105,10 +105,15 @@ class ClaudeAdapter:
         # blast radius by design.
         cmd = [CLAUDE_BIN, "-p", "--output-format", "json",
                "--permission-mode", "acceptEdits",
+               # A worker told to add tests will try to RUN them. Without Bash it stops
+               # to ask, returns prose and an empty diff, and the refusal heuristic
+               # (correctly, given what it can see) calls that a refusal.
+               "--allowedTools", "Edit", "Write", "Bash", "Read", "Glob", "Grep",
                "--model", contract.get("model") or self.model,
-               "--add-dir", str(worktree), prompt]
+               "--add-dir", str(worktree)]
         try:
-            p = subprocess.run(cmd, capture_output=True, text=True, timeout=wall,
+            # Prompt on stdin: --add-dir is variadic and would swallow a positional.
+            p = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=wall,
                                env=_clean_env(), cwd=str(worktree))
         except subprocess.TimeoutExpired:
             return Result(Status.TIMEOUT, {}, {"wall_s": time.time() - started}, lane=self.lane)

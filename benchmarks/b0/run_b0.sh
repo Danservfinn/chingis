@@ -45,7 +45,15 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ -f .env ]] && set -a && source .env && set +a || true
+# Export only NON-EMPTY values. `.env` ships with empty placeholders, and `set -a; source`
+# would overwrite a real credential already in the environment with "" -- which surfaces
+# three layers away as "401 token expired or incorrect" from the fleet.
+if [[ -f .env ]]; then
+  while IFS= read -r line; do
+    [[ "$line" =~ ^[[:space:]]*# || -z "${line//[[:space:]]/}" ]] && continue
+    [[ "$line" == *=* && -n "${line#*=}" ]] && export "${line?}"
+  done < .env
+fi
 mkdir -p "$ARTIFACTS" "$RESULTS" "$WORKTREES"
 
 log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
@@ -112,6 +120,18 @@ phase_generate() {
         fi
       fi
       echo "$inj_status" > "$outdir/INJECTION"
+
+      # The packaged lanes ARE Claude Code, so the operator's plugins write CLAUDE.md into
+      # the worktree. Strip before diffing or every artifact carries editor noise the
+      # reviewer reads as part of the change.
+      python3 - "$wt" <<'STRIP'
+import sys, pathlib
+sys.path.insert(0, ".")
+from adapters.base import strip_tooling_artifacts
+removed = strip_tooling_artifacts(pathlib.Path(sys.argv[1]))
+if removed:
+    print(f"  stripped tooling artifacts: {removed}")
+STRIP
 
       # The artifact is the diff. The worktree is the blast radius.
       git -C "$wt" add -A
