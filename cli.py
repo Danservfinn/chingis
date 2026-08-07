@@ -137,6 +137,18 @@ def cmd_status(args) -> int:
     return 0
 
 
+def cmd_health_checks(args) -> int:
+    """The instruments that watch the instruments. Spec §5, §11."""
+    from evals.health import run_all
+    print("== harness health ==")
+    warned = 0
+    for c in run_all(args.db):
+        print(f"  {c}")
+        warned += not c.ok
+    print(f"\n{warned} warning(s). Gauges, not gates -- nothing here halts a run.")
+    return 0
+
+
 def cmd_dashboard(args) -> int:
     from evals.dashboard import OUT, build
     OUT.write_text(build(args.db))
@@ -151,7 +163,8 @@ def main() -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     for name, fn in (("health", cmd_health), ("submit", cmd_submit),
-                     ("status", cmd_status), ("dashboard", cmd_dashboard)):
+                     ("status", cmd_status), ("dashboard", cmd_dashboard),
+                     ("checks", cmd_health_checks)):
         s = sub.add_parser(name)
         s.set_defaults(func=fn)
         if name in ("health", "submit"):

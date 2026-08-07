@@ -152,3 +152,24 @@ artifact rather than quietly shrinking the denominator.
 The underlying asymmetry is itself a result worth reporting — on these contracts GLM
 produced non-working code where Sonnet did not — but it is a finding about the fleets, not
 about cross-fleet review, and it belongs in the report as its own line.
+
+## H2 — Three documented failure-mode defenses had no instruments
+
+Found by walking §5/§11's failure table against what is actually measured. Each of these had
+a named threshold in the design and nothing computing it:
+
+- **Verifier collapse** (§5, §11): "if V2 approval rates drift above ~98% for weeks, the
+  reviewers have gone soft." No approval-rate measurement existed. This failure mode is
+  silent by construction — a verifier that approves everything looks like a fast one.
+- **Seeded-defect floor** (B5): "caught at the B0-measured rate, not below."
+  `CrossFleetVerifier` accepted a `min_catch_rate` and never referenced it, so the floor B0
+  exists to establish had nothing enforcing it outside a promotion gate.
+- **Contract volume** (§11 "no captive workload"): "tracked weekly". A count in a status
+  command is not a trend, and the premortem's own answer to "nothing feeds the loop" was to
+  track it.
+
+`evals/health.py` implements all three as gauges rather than gates — they report, the
+operator decides. Wired into `cli.py checks`. Its first run correctly warns that contract
+volume is 1/week against the 10/week that reaches M1's hundred held-out contracts in a
+quarter, which is exactly the premortem risk the design flagged and is now visible as a
+number rather than a worry.

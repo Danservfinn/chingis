@@ -334,3 +334,66 @@ def test_m0_policy_is_frozen():
     src = pathlib.Path("benchmarks/m0_control.py").read_text()
     for forbidden in ("LunaClient", "PolicyRuntime", "Runtime("):
         assert forbidden not in src, f"M0 must have no executive or policy: found {forbidden}"
+
+
+# ===================================== harness health: the instruments' instruments ====
+def test_verifier_collapse_is_detected(conn):
+    """Spec §5: V2 approving everything is indistinguishable from no V2, and it fails
+    silently -- throughput looks great right until the artifacts are wrong."""
+    from evals.health import COLLAPSE_THRESHOLD, verifier_collapse
+    for i in range(30):
+        conn.execute("INSERT INTO contracts (id, task_id, fleet, spec_json, status, created_ts)"
+                     " VALUES (?,?,?,?,?,?)", (f"c_{i:04d}", "t", "W1", "{}", "done", "2026-08-07"))
+        conn.execute("INSERT INTO outcomes (contract_id, v2_verdict) VALUES (?,?)",
+                     (f"c_{i:04d}", "approve"))
+    c = verifier_collapse(conn)
+    assert not c.ok and c.value == 1.0
+    assert "gone soft" in c.detail
+
+    conn.execute("UPDATE outcomes SET v2_verdict='reject' WHERE contract_id IN "
+                 "('c_0000','c_0001','c_0002','c_0003')")
+    assert verifier_collapse(conn).ok
+
+
+def test_collapse_check_refuses_to_read_too_few_samples(conn):
+    from evals.health import verifier_collapse
+    c = verifier_collapse(conn)
+    assert c.ok and "too early" in c.detail
+
+
+def test_seeded_floor_reports_regression_below_the_b0_rate(conn, monkeypatch):
+    """B5's criterion is 'not below'. It had no enforcement outside a promotion gate."""
+    import evals.health as health
+    monkeypatch.setattr(health, "b0_floor", lambda: 0.75)
+    assert health.seeded_catch_regression(conn, measured=0.80).ok
+    bad = health.seeded_catch_regression(conn, measured=0.60)
+    assert not bad.ok and "BELOW" in bad.detail
+
+
+def test_contract_volume_warns_when_the_loop_is_starving(conn):
+    """§11's 'no captive workload'. A count is not a trend."""
+    from evals.health import contract_volume
+    empty = contract_volume(conn)
+    assert not empty.ok and "Nothing feeds the loop" in empty.detail
+
+    for i in range(12):
+        conn.execute("INSERT INTO contracts (id, task_id, fleet, spec_json, status, created_ts)"
+                     " VALUES (?,?,?,?,?,?)", (f"v_{i:04d}", "t", "W1", "{}", "done", "2026-08-07"))
+    assert contract_volume(conn).ok
+
+
+def test_self_review_verdicts_are_flagged():
+    """'No artifact ships on self-review alone' is a structural rule; a verdict that came
+    from self-review must say so rather than look like any other verdict."""
+    from verify.v2_crossfleet import CrossFleetVerifier
+
+    class Echo:
+        lane = "W1"
+        def healthcheck(self): return True, ""
+        def run(self, contract, worktree):
+            from adapters.base import Result, Status
+            return Result(Status.DONE, {"summary": '```json\n{"findings":[],"verdict":"approve"}\n```'}, {})
+
+    v = CrossFleetVerifier({"W1": Echo()}, min_catch_rate=0.75)
+    out = v.review("W2", "obj", "diff", "")   # W2 generated -> W1 reviews: genuine cross
+    assert out["b0_floor"] == 0.75 and "warning" not in out

@@ -100,7 +100,16 @@ class CrossFleetVerifier:
         text = (getattr(result, "artifacts", {}) or {}).get("summary", "")
         parsed = parse_findings(text)
         findings = parsed.get("findings") or []
-        return {"tier": "V2", "reviewer_lane": reviewer, "generating_lane": generating_lane,
-                "verdict": parsed.get("verdict", "unknown"),
-                "findings": findings, "pass": not findings,
-                "self_review": reviewer == generating_lane}
+        verdict = {"tier": "V2", "reviewer_lane": reviewer, "generating_lane": generating_lane,
+                   "verdict": parsed.get("verdict", "unknown"),
+                   "findings": findings, "pass": not findings,
+                   "self_review": reviewer == generating_lane}
+        # `min_catch_rate` was accepted and never used, so B5's floor had nothing enforcing
+        # it after B0 set it. Carrying it on every verdict makes the floor legible at the
+        # point of use rather than only in a promotion gate months later.
+        if self.min_catch_rate is not None:
+            verdict["b0_floor"] = self.min_catch_rate
+        if reviewer == generating_lane:
+            verdict["warning"] = ("self-review: no artifact ships on self-review alone "
+                                  "(spec §5). The opposite fleet was unavailable.")
+        return verdict
