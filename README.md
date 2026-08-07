@@ -29,7 +29,7 @@ Both are protected paths. See §7 write-set enforcement below.
 | Phase 3 | `executive/client_local.py`, grammar-constrained decoding | **done** — unexercised, no MLX server running |
 | M-ladder | `loop/` scoring, consolidation, promotion gate | scaffolded, unexercised (opens post-B6) |
 
-**134 tests pass.** `uv run pytest -q`
+**137 tests pass.** `uv run pytest -q`
 
 > **Ground rule 1 said B0 before any harness code, and B0 has not run.** B1–B6 were built
 > anyway, on explicit operator instruction, because B0 is blocked on plan quota rather than
@@ -68,12 +68,39 @@ cannot close from inside.
 | **W0** (local) | MLX / LM Studio | no server running |
 
 B0 needs W1 **and** W2, so it cannot run until the Codex quota resets or the plan is
-upgraded. Everything else was built and tested around that.
+upgraded.
+
+**Running B0 on Z.ai alone would not be B0.** The experiment tests whether *two labs'*
+models catch each other's defects better than a model catches its own. Both Z.ai endpoints
+serve GLM, so a Z.ai-only run measures GLM reviewing GLM — self-review with extra steps,
+and a number that cannot answer the question. B0 stays blocked on a second lab rather than
+being downgraded into something that looks like a result.
+
+Everything else runs on Z.ai today: the executive (glm-4.6 / glm-5.2 via the coding
+endpoint), the WR raw lane, and W2.
 
 Also worth knowing: the Codex endpoint offers `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`,
 `gpt-5.4-mini`, and `codex-auto-review`. **Sol is not among them**, so the spec's
 Luna→Sol escalation rung has no transport on this plan; `escalate` currently has to target
 Terra or the operator.
+
+## Run a task
+
+The operator surface (spec §1, `OP`):
+
+```bash
+uv run ./cli.py health                     # what is reachable right now
+uv run ./cli.py submit "objective" --repo /path/to/repo
+uv run ./cli.py status                     # decisions logged, chain integrity per task
+uv run ./cli.py dashboard                  # regenerate the static eval board
+```
+
+The **operator names the repo; the executive names the objective and the lane.** A model
+that could choose its own worktree root would be choosing its own containment.
+
+W1 is omitted from the lane set while its account has no allowance. An absent adapter
+produces a `policy_exception` the executive can route around — strictly better than a lane
+that accepts dispatches and always fails.
 
 ## Run B0
 

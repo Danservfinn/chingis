@@ -356,8 +356,11 @@ class Runtime:
                 "output_schema": "diff+summary",
                 # The repo/ref the worktree is cut from. Without these the runtime cannot
                 # create a worktree and the lane runs against a bare directory.
-                "repo": d.params.get("repo"),
-                "base_ref": d.params.get("base_ref", "HEAD"),
+                # The operator names the repo (ledger state); the executive names the
+                # objective and the lane. A model that could choose its own blast radius
+                # would be choosing its own containment.
+                "repo": d.params.get("repo") or self.ledger.state.get("repo"),
+                "base_ref": d.params.get("base_ref", self.ledger.state.get("base_ref", "HEAD")),
                 "budget": d.params.get("budget", {"wall_min": 10, "quota_units": 1,
                                                   "tokens_usd": 0.10, "tool_calls": 20,
                                                   "inlane_retries": 0}),

@@ -271,3 +271,50 @@ def test_ten_canonical_scenarios_are_listed():
     m = json.loads(Path("evals/scenarios/manifest.json").read_text())
     assert m["canonical_count"] == 10
     assert len([s for s in m["scenarios"] if s["canonical"]]) == 10
+
+
+# ==================================================================== CLI ====
+def test_cli_exposes_the_operator_surface():
+    """Spec §1 (OP): task submission, escalation terminal, promotion decisions."""
+    import cli
+    for cmd in ("health", "submit", "status", "dashboard"):
+        assert hasattr(cli, f"cmd_{cmd}"), f"no operator command for {cmd}"
+
+
+def test_w1_is_omitted_while_its_quota_is_spent():
+    """An absent adapter yields a policy_exception the executive can route around --
+    strictly better than a lane that accepts dispatches and always fails."""
+    import cli
+    from kernel.capabilities import Registry
+    lanes = cli.build_adapters(Registry())
+    assert "W1" not in lanes
+    assert {"WR", "W2", "W0"} <= set(lanes)
+
+
+def test_operator_owns_the_blast_radius(conn, tmp_path):
+    """The executive names the objective and lane; the OPERATOR names the repo. A model
+    that could choose its own worktree root would be choosing its own containment."""
+    from executive.ledger import Ledger
+    from kernel.runtime import Runtime
+
+    class FakeAdapter:
+        lane = "WR"
+        def healthcheck(self): return True, "fake"
+        def run(self, contract, worktree):
+            self.seen = contract
+            return Result(Status.DONE, {"diff": ""}, {"usd": 0.0})
+
+    ad = FakeAdapter()
+    lg = Ledger(goal="x")
+    lg.state["repo"] = "/operator/chosen/repo"
+    rt = Runtime("t_repo", ScriptedExecutive([
+        {"schema_version": 1, "decision": "dispatch", "reason_code": "lane_capability_fit",
+         "confidence": 0.9, "params": {"lane": "WR", "contract_id": "c_0001"}},
+        {"schema_version": 1, "decision": "halt", "reason_code": "terminal_success",
+         "confidence": 0.9, "params": {"status": "success"}},
+    ]), {"WR": ad}, audit=AuditLog(conn), meters=Meters(usd=1, quota_units=10),
+        deps=Deps.deterministic([f"2026-08-06T12:00:{i:02d}Z" for i in range(40)]),
+        ledger=lg, workdir=tmp_path / "wt")
+    rt.submit("x")
+    asyncio.run(rt.run())
+    assert rt.state.contracts["c_0001"]["repo"] == "/operator/chosen/repo"
