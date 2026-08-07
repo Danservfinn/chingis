@@ -190,3 +190,25 @@ Continuing the failure-table audit. `temperature=0` was correctly set everywhere
   to. Three, not two, so a normal fail→retry→reroute never trips it; and a success clears
   the streak, because draining a lane over one bad contract costs the executive an option
   for nothing.
+
+## H4 — V3's off-family map had gone stale, and monoculture drift became real
+
+Two findings from the last §11 rows.
+
+**Off-family was same-family.** `OFF_FAMILY` hardcoded `W1 -> "claude"` and `W2 -> "sol"`.
+After the fleet substitution, W1 *is* Claude — so V3 would have reviewed Anthropic work with
+Anthropic, which is exactly the monoculture the tier exists to break — and "sol" has no
+transport at all. A map of stale assumptions is worse than no map: it reports compliance
+while delivering the failure. Off-family is now derived from a single `LANE_LAB` table, so
+rewiring a lane cannot silently invert the guarantee.
+
+**Monoculture drift stopped being hypothetical.** Z.ai/GLM now holds **3 of 4 positions** —
+executive, WR, and W2 — against Anthropic's one. §11's mitigation is "two-fleet symmetry
+preserved by design", and that symmetry eroded through a sequence of individually sensible
+substitutions: Z.ai for the raw lane because OpenRouter was out of credit, Z.ai for the
+executive because Codex was quota-blocked, Anthropic for W1 because Codex was quota-blocked.
+Each was right on its own; the aggregate is a monoculture.
+
+Now counted by `lab_diversity()` and reported as a warning rather than left to be noticed.
+This is a **finding for the operator, not something to auto-correct** — rebalancing means
+choosing a different provider for a position, which is a stack decision, not a repair.

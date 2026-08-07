@@ -118,13 +118,42 @@ def contract_volume(conn, weeks: int = 4) -> Check:
     return Check("contract_volume", True, f"{recent} this week. Trend: {trend}")
 
 
+def lab_diversity() -> Check:
+    """§11 'monoculture drift': both planes converging on one lab's judgment.
+
+    The design's mitigation is "two-fleet symmetry preserved by design", and symmetry is
+    the kind of property that erodes through individually sensible substitutions. Counting
+    it makes the erosion visible instead of arriving as a conclusion nobody chose.
+    """
+    from executive.client import LunaClient
+    from verify.v3_spotcheck import LANE_LAB
+
+    positions = {**{f"lane:{k}": v for k, v in LANE_LAB.items() if k != "W0"},
+                 "executive": "zai" if LunaClient(transport="zai").model.startswith("glm") else "openai"}
+    counts: dict[str, int] = {}
+    for lab in positions.values():
+        counts[lab] = counts.get(lab, 0) + 1
+    n = len(positions)
+    top_lab, top_n = max(counts.items(), key=lambda kv: kv[1])
+    share = top_n / n
+    detail = ", ".join(f"{k}={v}" for k, v in sorted(positions.items()))
+    if share > 0.5:
+        return Check("lab_diversity", False,
+                     f"{top_lab} holds {top_n}/{n} positions ({share:.0%}). Two-fleet "
+                     f"symmetry is the §11 mitigation for monoculture drift, and it is "
+                     f"currently lopsided. {detail}", share)
+    return Check("lab_diversity", True,
+                 f"no lab holds more than {share:.0%} of positions. {detail}", share)
+
+
 def run_all(db: str | Path = ROOT / "chingis.db", seeded_measured: float | None = None) -> list[Check]:
     conn = connect(db)
     migrate(conn)
     try:
         return [verifier_collapse(conn),
                 seeded_catch_regression(conn, seeded_measured),
-                contract_volume(conn)]
+                contract_volume(conn),
+                lab_diversity()]
     finally:
         conn.close()
 

@@ -397,3 +397,26 @@ def test_self_review_verdicts_are_flagged():
     v = CrossFleetVerifier({"W1": Echo()}, min_catch_rate=0.75)
     out = v.review("W2", "obj", "diff", "")   # W2 generated -> W1 reviews: genuine cross
     assert out["b0_floor"] == 0.75 and "warning" not in out
+
+
+def test_off_family_never_reviews_a_lab_with_itself():
+    """§5: V3 is 'off-family for whichever fleet generated'. The previous hardcoded map
+    sent W1 to 'claude' while W1 IS Claude, and W2 to 'sol', which has no transport. A map
+    of stale assumptions reports compliance while delivering the monoculture it exists to
+    break."""
+    from verify.v3_spotcheck import LANE_LAB, is_off_family, off_family_for
+    for lane, lab in LANE_LAB.items():
+        assert off_family_for(lane) != lab, f"{lane} would be reviewed by its own lab"
+    assert is_off_family("W1", "W2") and is_off_family("W2", "W1")
+    assert not is_off_family("WR", "W2"), "WR and W2 are both Z.ai -- not cross-fleet"
+    with pytest.raises(ValueError, match="cannot guarantee"):
+        off_family_for("W9")
+
+
+def test_monoculture_drift_is_counted_not_assumed():
+    """§11's mitigation is 'two-fleet symmetry preserved by design'. Symmetry erodes
+    through individually sensible substitutions, so it needs a number."""
+    from evals.health import lab_diversity
+    c = lab_diversity()
+    assert c.value is not None
+    assert ("holds" in c.detail) or ("no lab holds" in c.detail)
