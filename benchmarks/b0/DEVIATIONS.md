@@ -62,3 +62,33 @@ report the class as V1-visible in this run.
 V1-visible as a control and `c_0003` became so accidentally. Any claim that V2 catches what
 V1 cannot rests on the remaining eight, and `deleted_failing_test` (`c_0001`) is scored
 separately for that reason.
+
+## D4 — `c_0009` (`async_race`) injection failed on W1
+
+**Noticed:** 2026-08-07, from the run log.
+
+Pattern `await (\w+\([^)]*\))` matched nothing on the W1 artifact — the generator wrote the
+awaits in a form the pattern does not cover (comprehension, `asyncio.gather`, or a bare
+name). W2's artifact matched and was injected, so the class survives in one direction only.
+The pair is excluded from the denominator, loudly.
+
+Same root cause as D2: a pattern narrower than the shapes a competent generator will
+plausibly produce. Left unrepaired for this run; `c_0009` is re-run alongside `c_0004`.
+
+## D5 — The run died at `c_0010`, and that was a harness bug, not a fleet problem
+
+**Noticed:** 2026-08-07, from the run monitor — which reported the death rather than going
+quiet, because its filter covered "process gone" and not only "done".
+
+`git worktree add` failed with *"missing but already registered"*: a worktree killed
+mid-flight leaves a directory and a registration, and only removing the directory makes the
+registration prunable. `adapters/base.py:Worktree` was fixed for exactly this earlier; the
+bash harness does its own raw `git worktree` calls and never got the same fix. **One bug,
+two implementations, fixed in one of them** — worth naming as a class, because the B0
+harness duplicating the Python worktree logic means every future fix has two homes.
+
+Worse than the failure was the handling: `run_b0.sh` called `die`, so one unusable worktree
+killed a run that had 18 of 40 artifacts. It now logs and **skips the contract**. One bad
+worktree should cost one contract, not every contract after it.
+
+No artifacts were lost — the runner is resumable and anything already on disk is skipped.

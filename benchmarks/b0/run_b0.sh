@@ -90,8 +90,19 @@ phase_generate() {
 
       wt="$WORKTREES/${cid}_${fleet}"
       rm -rf "$wt"
-      git -C "$repo" worktree add --detach --quiet "$wt" "$base" 2>/dev/null \
-        || die "$cid/$fleet: could not create worktree at $base"
+      # Prune AFTER removing the directory: a run killed mid-flight leaves both a directory
+      # and a registration, and deleting the directory is what makes the registration
+      # prunable. Without this, `add` fails with "missing but already registered".
+      # (adapters/base.py:Worktree got this fix; the bash harness did not, and one stale
+      # registration then killed a two-hour experiment.)
+      git -C "$repo" worktree prune 2>/dev/null || true
+      if ! wt_err="$(git -C "$repo" worktree add --detach --quiet "$wt" "$base" 2>&1)"; then
+        # SKIP, do not die. One unusable worktree costs one contract; killing the run
+        # costs every contract after it, and the failure looked like a fleet outage.
+        log "$cid/$fleet WORKTREE FAILED, skipping: ${wt_err:0:160}"
+        echo "worktree_failed" > "$outdir/STATUS"
+        continue
+      fi
 
       # The prompt is the contract objective. Nothing about seeding, nothing about
       # the other fleet, nothing about review.
