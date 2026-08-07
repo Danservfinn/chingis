@@ -1,0 +1,10 @@
+{
+  "contract_id": "c_0015",
+  "repo": "/Users/kurultai/llm-survivor",
+  "base_ref": "main",
+  "objective": "Create backend/chunking.py with chunk(items, size) yielding consecutive lists of at most `size` items, raising ValueError for size < 1. Add backend/tests/test_chunking.py. Do not modify any existing file.",
+  "context_refs": [
+    "backend/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest backend/tests -q"
+}

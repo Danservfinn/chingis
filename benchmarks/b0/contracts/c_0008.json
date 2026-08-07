@@ -1,0 +1,12 @@
+{
+  "contract_id": "c_0008",
+  "repo": "/Users/kurultai/llm-survivor",
+  "base_ref": "main",
+  "objective": "Create backend/transcript_io.py with save_transcript(path, text) and load_transcript(path) that read and write UTF-8 explicitly by passing encoding='utf-8' to open(). Add backend/tests/test_transcript_io.py round-tripping text containing non-ASCII characters. Do not modify any existing file.",
+  "context_refs": [
+    "backend/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest backend/tests -q",
+  "seeded_class": "encoding_bug",
+  "notes": "Injection drops the explicit encoding, making behaviour locale-dependent: passes here, fails elsewhere. Exactly the class V1 cannot see on this machine."
+}

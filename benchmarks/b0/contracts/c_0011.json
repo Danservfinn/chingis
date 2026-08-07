@@ -1,0 +1,10 @@
+{
+  "contract_id": "c_0011",
+  "repo": "/Users/kurultai/llm-survivor",
+  "base_ref": "main",
+  "objective": "Create backend/duration.py with format_duration(seconds) rendering integer seconds as 'MM:SS' (or 'HH:MM:SS' past an hour). Add backend/tests/test_duration.py. Do not modify any existing file.",
+  "context_refs": [
+    "backend/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest backend/tests -q"
+}

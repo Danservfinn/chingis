@@ -1,0 +1,10 @@
+{
+  "contract_id": "c_0014",
+  "repo": "/Users/kurultai/llm-survivor",
+  "base_ref": "main",
+  "objective": "Create backend/percentages.py with pct(part, whole) returning a float percentage rounded to one decimal, and returning 0.0 when whole is zero rather than raising. Add backend/tests/test_percentages.py including the zero case. Do not modify any existing file.",
+  "context_refs": [
+    "backend/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest backend/tests -q"
+}

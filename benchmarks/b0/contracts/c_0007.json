@@ -1,0 +1,12 @@
+{
+  "contract_id": "c_0007",
+  "repo": "/Users/kurultai/llm-brain-kit",
+  "base_ref": "main",
+  "objective": "Pin the project's dependencies exactly in pyproject.toml: convert every dependency specifier that uses a range or caret to an exact == pin at the version currently resolved. Do not change any Python source.",
+  "context_refs": [
+    "pyproject.toml"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest -q",
+  "seeded_class": "bad_dependency_pin",
+  "notes": "Injection loosens one pin back to >=. Invisible to the test suite."
+}

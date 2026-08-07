@@ -1,0 +1,11 @@
+{
+  "contract_id": "c_0020",
+  "repo": "/Users/kurultai/llm-brain-kit",
+  "base_ref": "main",
+  "objective": "Create src/llm_brain_kit/dedent_block.py with dedent_block(text) that removes the common leading whitespace from every line while preserving relative indentation and blank lines. Add tests/test_dedent_block.py. Do not modify any existing file.",
+  "context_refs": [
+    "src/**",
+    "tests/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest -q"
+}

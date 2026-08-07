@@ -1,0 +1,11 @@
+{
+  "contract_id": "c_0016",
+  "repo": "/Users/kurultai/llm-brain-kit",
+  "base_ref": "main",
+  "objective": "Create src/llm_brain_kit/textwrap_utils.py with wrap_paragraph(text, width) that wraps text to the given column without splitting words. Add tests/test_textwrap_utils.py. Do not modify any existing file.",
+  "context_refs": [
+    "src/**",
+    "tests/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest -q"
+}

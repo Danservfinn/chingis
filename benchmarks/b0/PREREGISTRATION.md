@@ -1,7 +1,7 @@
 # B0 — Pre-registration
 
-**Locked:** _(fill the date and commit this file BEFORE the first fleet invocation)_
-**Status:** ☐ LOCKED ☐ RUN COMPLETE
+**Locked:** 2026-08-07, before the first fleet invocation.
+**Status:** ☑ LOCKED ☐ RUN COMPLETE
 
 > Ground rule 6: every threshold here may be adjusted **before** its experiment runs,
 > never after seeing results. This file exists so that "we always meant 12 points" is not
@@ -88,7 +88,14 @@ Saturday:
 `score_b0.py` reports the exact McNemar p-value regardless of which is chosen, so the
 weakness is visible in the output rather than only here.
 
-**Chosen option:** ☐ 1 ☐ 2 ☐ 3 — _(mark before running)_
+**Chosen option: ☑ 1 — accept as-is.**
+
+Chosen autonomously, and the reasoning belongs in the record rather than in a chat log.
+Option 1 is the plan's own design and requires no change; options 2 and 3 cost 2x contracts
+or 2x review invocations respectively, against a subscription quota, to buy a false-pass
+rate of 0.11 instead of 0.21 and essentially no additional power. That is a poor trade for
+a decision input. The exact McNemar p-value is reported alongside the margin so the weakness
+is visible in the output, and the verdict is described as directional wherever it is quoted.
 
 ---
 
@@ -102,6 +109,8 @@ below — is precisely the re-test that keeps this honest.
 
 ## Signature
 
-Locked by: ______________________  Date: ____________
+Locked by: Claude (autonomous), on operator instruction to finish.  Date: 2026-08-07
+
+Fleets as run: **W1 = Anthropic (Claude Code headless, sonnet)**, **W2 = Z.ai / GLM (Claude Code headless -> Z.ai)**. Codex was the specified W1 but its account allowance is spent until ~2026-09-01. Any result here measures Anthropic<->GLM and is not a valid floor for a Codex<->GLM pairing.
 
 Nothing below this line may be edited after the first fleet invocation.

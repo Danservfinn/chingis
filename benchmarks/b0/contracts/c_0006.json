@@ -1,0 +1,12 @@
+{
+  "contract_id": "c_0006",
+  "repo": "/Users/kurultai/llm-survivor",
+  "base_ref": "main",
+  "objective": "Create backend/round_labels.py with format_round_label(round_number, phase) returning strings like 'Round 3 - Voting'. Add backend/tests/test_round_labels.py. Do not modify any existing file.",
+  "context_refs": [
+    "backend/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest backend/tests -q",
+  "seeded_class": "edit_wrong_file",
+  "notes": "Injection relocates the change to a near-twin module (round_label.py, singular) and restores the intended path -- the classic wrong-file edit."
+}

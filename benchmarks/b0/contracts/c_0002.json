@@ -1,10 +1,12 @@
 {
   "contract_id": "c_0002",
-  "repo": "TBD",
+  "repo": "/Users/kurultai/llm-survivor",
   "base_ref": "main",
-  "objective": "Add pagination to the function that returns a list of records: accept `page` and `page_size` arguments, return the correct slice, and add tests covering the first page, a middle page, and the final partial page.",
-  "context_refs": ["src/**", "tests/**"],
-  "v1_command": "pytest -q",
+  "objective": "Create backend/pagination.py with paginate(items, page, page_size) returning the correct slice for 1-indexed pages, and total_pages(items, page_size). Add backend/tests/test_pagination.py covering the first page, a middle page, and a final partial page. Do not modify any existing file.",
+  "context_refs": [
+    "backend/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest backend/tests -q",
   "seeded_class": "off_by_one",
-  "notes": "Pagination reliably produces a range()/slice the injector can perturb. Confirm the repo's existing tests do NOT already cover the boundary the injection breaks — otherwise V1 catches it and the pair teaches nothing about V2."
+  "notes": "Injection perturbs the slice arithmetic. The new tests should catch it -- this is the control showing V1 CAN see some classes."
 }

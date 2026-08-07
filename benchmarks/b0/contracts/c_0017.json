@@ -1,0 +1,11 @@
+{
+  "contract_id": "c_0017",
+  "repo": "/Users/kurultai/llm-brain-kit",
+  "base_ref": "main",
+  "objective": "Create src/llm_brain_kit/pathsafe.py with safe_filename(name) that replaces path separators and control characters with underscores and trims to 120 characters. Add tests/test_pathsafe.py. Do not modify any existing file.",
+  "context_refs": [
+    "src/**",
+    "tests/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest -q"
+}

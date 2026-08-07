@@ -1,0 +1,10 @@
+{
+  "contract_id": "c_0013",
+  "repo": "/Users/kurultai/llm-survivor",
+  "base_ref": "main",
+  "objective": "Create backend/truncate.py with truncate_words(text, limit) returning the first `limit` words followed by an ellipsis when truncation occurred, and the original text otherwise. Add backend/tests/test_truncate.py. Do not modify any existing file.",
+  "context_refs": [
+    "backend/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest backend/tests -q"
+}

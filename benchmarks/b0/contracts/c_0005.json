@@ -1,10 +1,12 @@
 {
   "contract_id": "c_0005",
-  "repo": "TBD",
+  "repo": "/Users/kurultai/llm-survivor",
   "base_ref": "main",
-  "objective": "The duplicate-detection routine is quadratic over the input list. Rewrite it to use a set for membership testing while preserving the existing return order, and add a test asserting the output is unchanged for a representative input.",
-  "context_refs": ["src/**", "tests/**"],
-  "v1_command": "pytest -q",
+  "objective": "Create backend/dedupe.py with unique_preserving_order(items) that removes duplicates while preserving first-occurrence order, using a set for membership testing so it stays linear. Add backend/tests/test_dedupe.py asserting order is preserved. Do not modify any existing file.",
+  "context_refs": [
+    "backend/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest backend/tests -q",
   "seeded_class": "perf_regression",
-  "notes": "The objective forces a set() into existence; the injection turns it back into a list. Behaviour is identical so V1 stays green — the reviewer has to notice the complexity regression from the diff alone."
+  "notes": "Injection turns the set into a list: behaviourally identical, so V1 stays green and only a reviewer reading the diff can see the complexity regression."
 }

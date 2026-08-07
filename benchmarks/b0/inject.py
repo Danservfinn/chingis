@@ -20,6 +20,21 @@ import sys
 from pathlib import Path
 
 
+def _git_show(worktree: Path, rel: str) -> str | None:
+    """Contents of a file at HEAD, or None if it did not exist there."""
+    import subprocess
+    p = subprocess.run(["git", "-C", str(worktree), "show", f"HEAD:{rel}"],
+                       capture_output=True, text=True)
+    return p.stdout if p.returncode == 0 else None
+
+
+def _record(args, entry: dict, file: str, line: int) -> None:
+    args.out_dir.mkdir(parents=True, exist_ok=True)
+    (args.out_dir / "injection.json").write_text(json.dumps(
+        {"contract_id": args.contract, "defect_class": entry["defect_class"],
+         "file": file, "line": line, "substitutions": 1}, indent=2))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--manifest", required=True, type=Path)
@@ -55,6 +70,25 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
+
+    if method == "move_change":
+        # edit_wrong_file: apply the worker's change to a near-twin module instead, and
+        # restore the intended one. Not expressible as a regex, but entirely deterministic.
+        src = args.worktree / inj["file"]
+        twin = args.worktree / inj["twin"]
+        if not src.exists():
+            print(f"inject: {src} absent", file=sys.stderr)
+            return 1
+        base = _git_show(args.worktree, inj["file"])
+        twin.parent.mkdir(parents=True, exist_ok=True)
+        twin.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        if base is None:
+            src.unlink()
+        else:
+            src.write_text(base, encoding="utf-8")
+        _record(args, entry, inj["twin"], 1)
+        print(f"inject: {args.contract} edit_wrong_file -> {inj['twin']}")
+        return 0
 
     if method != "python_sub":
         print(f"inject: unknown method {method!r}", file=sys.stderr)

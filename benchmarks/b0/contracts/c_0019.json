@@ -1,0 +1,11 @@
+{
+  "contract_id": "c_0019",
+  "repo": "/Users/kurultai/llm-brain-kit",
+  "base_ref": "main",
+  "objective": "Create src/llm_brain_kit/frontmatter.py with split_frontmatter(text) that separates a leading YAML frontmatter block delimited by --- lines from the body, returning (frontmatter_text, body). Return ('', text) when there is no frontmatter. Add tests/test_frontmatter.py. Do not modify any existing file.",
+  "context_refs": [
+    "src/**",
+    "tests/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest -q"
+}

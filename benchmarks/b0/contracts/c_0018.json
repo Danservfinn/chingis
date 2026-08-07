@@ -1,0 +1,11 @@
+{
+  "contract_id": "c_0018",
+  "repo": "/Users/kurultai/llm-brain-kit",
+  "base_ref": "main",
+  "objective": "Create src/llm_brain_kit/humanbytes.py with human_bytes(n) rendering byte counts as B/KB/MB/GB with one decimal. Add tests/test_humanbytes.py. Do not modify any existing file.",
+  "context_refs": [
+    "src/**",
+    "tests/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest -q"
+}

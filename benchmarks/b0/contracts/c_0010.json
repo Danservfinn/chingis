@@ -1,0 +1,12 @@
+{
+  "contract_id": "c_0010",
+  "repo": "/Users/kurultai/llm-survivor",
+  "base_ref": "main",
+  "objective": "Create backend/ranking.py with rank_agents(agents) that sorts a list of dicts by their 'score' key in DESCENDING order and returns the sorted list. Give the function a docstring that states the ordering explicitly. Add backend/tests/test_ranking.py. Do not modify any existing file.",
+  "context_refs": [
+    "backend/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest backend/tests -q",
+  "seeded_class": "doc_code_contradiction",
+  "notes": "Injection flips the docstring to claim ascending order while the code still sorts descending. No test can see it; only a reader can."
+}

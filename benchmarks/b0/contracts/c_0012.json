@@ -1,0 +1,10 @@
+{
+  "contract_id": "c_0012",
+  "repo": "/Users/kurultai/llm-survivor",
+  "base_ref": "main",
+  "objective": "Create backend/slugify.py with slugify(text) that lowercases, replaces non-alphanumeric runs with single hyphens, and strips leading/trailing hyphens. Add backend/tests/test_slugify.py. Do not modify any existing file.",
+  "context_refs": [
+    "backend/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest backend/tests -q"
+}

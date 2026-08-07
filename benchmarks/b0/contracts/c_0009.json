@@ -1,0 +1,12 @@
+{
+  "contract_id": "c_0009",
+  "repo": "/Users/kurultai/llm-survivor",
+  "base_ref": "main",
+  "objective": "Create backend/prefetch_queue.py with an async function prefetch_all(loaders) that awaits every loader coroutine in order and returns their results as a list. Add backend/tests/test_prefetch_queue.py using asyncio.run. Do not modify any existing file.",
+  "context_refs": [
+    "backend/**"
+  ],
+  "v1_command": "uv run --quiet --with pytest python -m pytest backend/tests -q",
+  "seeded_class": "async_race",
+  "notes": "Injection converts an await into a fire-and-forget task. If the repo's tests turn flaky under this, drop the pair rather than reporting a flaky catch."
+}

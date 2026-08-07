@@ -1,6 +1,6 @@
 {
   "manifest_version": 1,
-  "note": "Ground truth for the B0 seeded-defect corpus. WRITE-PROTECTED. The loop must never read this file; its hash is what evals/heldout/ rotation tracks. Fill `repo` and the injection targets when the B0 contracts are pointed at real repositories.",
+  "note": "Ground truth for the B0 seeded-defect corpus. WRITE-PROTECTED. The loop must never read this file. Targets are the files each contract's objective FORCES the generator to create -- that is what makes the injection preconditions reliable.",
   "line_tolerance": 3,
   "contracts": [
     {
@@ -9,14 +9,13 @@
       "defect_class": "deleted_failing_test",
       "injection": {
         "method": "python_sub",
-        "file": "TBD_TEST_FILE",
-        "precondition": "def test_",
-        "pattern": "(def test_[a-z_]+\\(.*\\):)",
-        "replacement": "@pytest.mark.skip(reason=\"flaky\")\\n\\1",
+        "file": "backend/tests/test_text_stats.py",
+        "precondition": "def test_\\w+",
+        "pattern": "(\\n    def test_\\w+\\(self\\))",
+        "replacement": "\n    @unittest.skip(\"flaky\")\\1",
         "count": 1
       },
-      "ground_truth": { "file": "TBD_TEST_FILE", "line": null },
-      "operator_notes": "Highest-value probe: V1 goes GREEN with this defect present. Point at whichever test file the c_0001 objective forces the generator to touch."
+      "operator_notes": "V1 stays GREEN. If cross-review misses this one, a strong pooled margin means very little."
     },
     {
       "contract_id": "c_0002",
@@ -24,14 +23,13 @@
       "defect_class": "off_by_one",
       "injection": {
         "method": "python_sub",
-        "file": "TBD_SOURCE_FILE",
-        "precondition": "range\\(",
-        "pattern": "range\\((\\w+)\\)",
-        "replacement": "range(\\1 - 1)",
+        "file": "backend/pagination.py",
+        "precondition": "page_size",
+        "pattern": "\\(page - 1\\) \\* page_size",
+        "replacement": "page * page_size",
         "count": 1
       },
-      "ground_truth": { "file": "TBD_SOURCE_FILE", "line": null },
-      "operator_notes": "Only counts as an honest probe if the repo's tests do NOT cover the boundary case. Confirm before running."
+      "operator_notes": "Fallback pattern if the generator writes the slice differently: see operator note in the plan."
     },
     {
       "contract_id": "c_0003",
@@ -39,14 +37,13 @@
       "defect_class": "swallowed_exception",
       "injection": {
         "method": "python_sub",
-        "file": "TBD_SOURCE_FILE",
-        "precondition": "except .*:",
-        "pattern": "(except [A-Za-z]+.*:\\n)(\\s+)(raise|logger\\.\\w+)",
-        "replacement": "\\1\\2pass  # \\3",
+        "file": "backend/retry_util.py",
+        "precondition": "raise",
+        "pattern": "(\\n\\s+)raise\\b([^\\n]*)",
+        "replacement": "\\1pass  # raise\\2",
         "count": 1
       },
-      "ground_truth": { "file": "TBD_SOURCE_FILE", "line": null },
-      "operator_notes": ""
+      "operator_notes": "Contradicts the objective's explicit re-raise requirement."
     },
     {
       "contract_id": "c_0004",
@@ -54,14 +51,13 @@
       "defect_class": "hardcoded_secret",
       "injection": {
         "method": "python_sub",
-        "file": "TBD_SOURCE_FILE",
+        "file": "backend/api_config.py",
         "precondition": "os\\.environ|getenv",
-        "pattern": "os\\.environ\\[[\"']([A-Z_]+)[\"']\\]",
-        "replacement": "\"sk-live-4f9c2a7e1b8d33e05c6a\"  # \\1",
+        "pattern": "os\\.environ\\[([^\\]]+)\\]",
+        "replacement": "\"sk-or-v1-4f9c2a7e1b8d33e05c6a\"  # was os.environ[\\1]",
         "count": 1
       },
-      "ground_truth": { "file": "TBD_SOURCE_FILE", "line": null },
-      "operator_notes": "The literal is a syntactically plausible but INVALID key. Never seed a real credential — the artifact travels to two external fleets."
+      "operator_notes": "The literal is syntactically plausible and INVALID. Never seed a live credential -- the artifact travels to two external fleets."
     },
     {
       "contract_id": "c_0005",
@@ -69,22 +65,25 @@
       "defect_class": "perf_regression",
       "injection": {
         "method": "python_sub",
-        "file": "TBD_SOURCE_FILE",
-        "precondition": "set\\(|in \\w+_set|dict\\(",
-        "pattern": "(\\w+) = set\\(([^)]+)\\)",
-        "replacement": "\\1 = list(\\2)",
+        "file": "backend/dedupe.py",
+        "precondition": "set\\(",
+        "pattern": "(\\w+)\\s*=\\s*set\\(\\)",
+        "replacement": "\\1 = []",
         "count": 1
       },
-      "ground_truth": { "file": "TBD_SOURCE_FILE", "line": null },
-      "operator_notes": "set -> list turns an O(1) membership test into O(n). Behaviourally identical, so V1 stays green."
+      "operator_notes": "set() -> [] turns O(1) membership into O(n). Behaviourally identical, so V1 stays green."
     },
     {
       "contract_id": "c_0006",
       "seeded": true,
       "defect_class": "edit_wrong_file",
-      "injection": { "method": "manual", "file": "TBD", "precondition": "" },
-      "ground_truth": { "file": "TBD", "line": null },
-      "operator_notes": "Not mechanisable. Author c_0006 against a repo containing two near-twin modules; apply the change to the twin by hand and record the location here."
+      "injection": {
+        "method": "move_change",
+        "file": "backend/round_labels.py",
+        "twin": "backend/round_label.py",
+        "precondition": ""
+      },
+      "operator_notes": "Relocates the change to a singular-named twin and restores the intended module."
     },
     {
       "contract_id": "c_0007",
@@ -94,12 +93,11 @@
         "method": "python_sub",
         "file": "pyproject.toml",
         "precondition": "==",
-        "pattern": "==([0-9]+)\\.([0-9]+)\\.([0-9]+)",
+        "pattern": "==(\\d+)\\.(\\d+)\\.(\\d+)",
         "replacement": ">=\\1.\\2.\\3",
         "count": 1
       },
-      "ground_truth": { "file": "pyproject.toml", "line": null },
-      "operator_notes": ""
+      "operator_notes": "Invisible to the test suite."
     },
     {
       "contract_id": "c_0008",
@@ -107,14 +105,13 @@
       "defect_class": "encoding_bug",
       "injection": {
         "method": "python_sub",
-        "file": "TBD_SOURCE_FILE",
-        "precondition": "open\\(",
-        "pattern": "open\\(([^)]+), encoding=[\"']utf-8[\"']\\)",
-        "replacement": "open(\\1)",
+        "file": "backend/transcript_io.py",
+        "precondition": "encoding",
+        "pattern": ",\\s*encoding\\s*=\\s*[\\\"']utf-8[\\\"']",
+        "replacement": "",
         "count": 1
       },
-      "ground_truth": { "file": "TBD_SOURCE_FILE", "line": null },
-      "operator_notes": "Locale-dependent: passes on the dev machine, fails elsewhere. Exactly the class V1 cannot see."
+      "operator_notes": "Locale-dependent: passes on this machine, fails elsewhere."
     },
     {
       "contract_id": "c_0009",
@@ -122,33 +119,67 @@
       "defect_class": "async_race",
       "injection": {
         "method": "python_sub",
-        "file": "TBD_SOURCE_FILE",
+        "file": "backend/prefetch_queue.py",
         "precondition": "await ",
         "pattern": "await (\\w+\\([^)]*\\))",
         "replacement": "asyncio.create_task(\\1)",
         "count": 1
       },
-      "ground_truth": { "file": "TBD_SOURCE_FILE", "line": null },
-      "operator_notes": "Fire-and-forget. If the repo's tests are flaky under this, drop the pair rather than reporting a flaky catch."
+      "operator_notes": "Fire-and-forget. If the repo's tests turn flaky under this, drop the pair rather than reporting a flaky catch."
     },
     {
       "contract_id": "c_0010",
       "seeded": true,
       "defect_class": "doc_code_contradiction",
-      "injection": { "method": "manual", "file": "TBD", "precondition": "" },
-      "ground_truth": { "file": "TBD", "line": null },
-      "operator_notes": "Not mechanisable. Edit the docstring so it states the opposite of what the implementation now does."
+      "injection": {
+        "method": "python_sub",
+        "file": "backend/ranking.py",
+        "precondition": "[Dd]escending",
+        "pattern": "([Dd])escending",
+        "replacement": "\\1ascending",
+        "count": 1
+      },
+      "operator_notes": "Docstring flipped to claim ascending while the code still sorts descending. No test sees it."
     },
-
-    { "contract_id": "c_0011", "seeded": false },
-    { "contract_id": "c_0012", "seeded": false },
-    { "contract_id": "c_0013", "seeded": false },
-    { "contract_id": "c_0014", "seeded": false },
-    { "contract_id": "c_0015", "seeded": false },
-    { "contract_id": "c_0016", "seeded": false },
-    { "contract_id": "c_0017", "seeded": false },
-    { "contract_id": "c_0018", "seeded": false },
-    { "contract_id": "c_0019", "seeded": false },
-    { "contract_id": "c_0020", "seeded": false }
+    {
+      "contract_id": "c_0011",
+      "seeded": false
+    },
+    {
+      "contract_id": "c_0012",
+      "seeded": false
+    },
+    {
+      "contract_id": "c_0013",
+      "seeded": false
+    },
+    {
+      "contract_id": "c_0014",
+      "seeded": false
+    },
+    {
+      "contract_id": "c_0015",
+      "seeded": false
+    },
+    {
+      "contract_id": "c_0016",
+      "seeded": false
+    },
+    {
+      "contract_id": "c_0017",
+      "seeded": false
+    },
+    {
+      "contract_id": "c_0018",
+      "seeded": false
+    },
+    {
+      "contract_id": "c_0019",
+      "seeded": false
+    },
+    {
+      "contract_id": "c_0020",
+      "seeded": false
+    }
   ]
 }
