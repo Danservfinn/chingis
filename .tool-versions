@@ -1,5 +1,7 @@
 python 3.12
-# codex NOT INSTALLED as of 2026-08-06 — required for B0 arm W1
-# claude 2.1.221 (Claude Code)
+# Pinned at B2 per plan §1. Flags verified against --help on this exact version.
+# Do not chase upgrades until B3.
+# codex   codex-cli 0.146.0-alpha.3.1   (via /Applications/Codex.app, linked to ~/.local/bin/codex)
+# claude  2.1.221 (Claude Code)
 # gtimeout timeout (GNU coreutils) 9.11
-# uv uv 0.9.22 (82a6a66b8 2026-01-06)
+# uv      uv 0.9.22 (82a6a66b8 2026-01-06)

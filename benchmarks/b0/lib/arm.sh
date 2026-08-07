@@ -62,7 +62,8 @@ fleet_generate() {
         --cd "$worktree" "$(cat "$prompt")" > "$out" 2>"$out.stderr"
       ;;
     W2)
-      ANTHROPIC_BASE_URL="$ZAI_CODING_ENDPOINT" ANTHROPIC_AUTH_TOKEN="$ZAI_KEY" \
+      ANTHROPIC_BASE_URL="${ZAI_ANTHROPIC_ENDPOINT:-https://api.z.ai/api/anthropic}" \
+      ANTHROPIC_AUTH_TOKEN="${ZAI_KEY:-$ZAI_API_KEY}" \
       gtimeout "${B0_WALL_S}s" claude -p --output-format json \
         --add-dir "$worktree" "$(cat "$prompt")" > "$out" 2>"$out.stderr"
       ;;
@@ -92,7 +93,8 @@ EOF
         "$(cat "$prompt")" > "$raw" 2>"$raw.stderr" || true
       ;;
     W2)
-      ANTHROPIC_BASE_URL="$ZAI_CODING_ENDPOINT" ANTHROPIC_AUTH_TOKEN="$ZAI_KEY" \
+      ANTHROPIC_BASE_URL="${ZAI_ANTHROPIC_ENDPOINT:-https://api.z.ai/api/anthropic}" \
+      ANTHROPIC_AUTH_TOKEN="${ZAI_KEY:-$ZAI_API_KEY}" \
       gtimeout "${B0_WALL_S}s" claude -p --output-format json \
         "$(cat "$prompt")" > "$raw" 2>"$raw.stderr" || true
       ;;

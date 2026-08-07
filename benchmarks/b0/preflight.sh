@@ -4,7 +4,14 @@
 
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)"
-[[ -f .env ]] && set -a && source .env && set +a
+# Only export NON-EMPTY values: an empty assignment in .env would clobber a real
+# credential already present in the environment.
+if [[ -f .env ]]; then
+  while IFS= read -r line; do
+    [[ "$line" =~ ^[[:space:]]*# || -z "${line//[[:space:]]/}" ]] && continue
+    [[ "$line" == *=* && -n "${line#*=}" ]] && export "${line?}"
+  done < .env
+fi
 
 ok=0; warn=0; bad=0
 # NOTE: assign, never (( x++ )). Post-increment evaluates to the OLD value, so (( ok++ ))
@@ -39,9 +46,12 @@ fi
 
 echo
 echo "== Credentials =="
-[[ -n "${ZAI_CODING_ENDPOINT:-}" ]] && pass "ZAI_CODING_ENDPOINT set" || fail "ZAI_CODING_ENDPOINT unset in .env — W2 cannot reach the GLM plan"
-[[ -n "${ZAI_KEY:-}" ]]            && pass "ZAI_KEY set"              || fail "ZAI_KEY unset in .env"
-[[ -n "${OPENAI_API_KEY:-}" ]]     && pass "OPENAI_API_KEY set"       || soft "OPENAI_API_KEY unset — not needed for B0, needed at B3"
+[[ -n "${ZAI_API_KEY:-}${ZAI_KEY:-}" ]] && pass "Z.ai key set (WR + W2)" || fail "ZAI_API_KEY unset — blocks the WR raw lane and both W2 arms"
+if [[ -f "$HOME/.codex/auth.json" ]]; then
+  pass "Codex OAuth credentials present (~/.codex/auth.json)"
+else
+  fail "no ~/.codex/auth.json — run 'codex login'; blocks both W1 arms"
+fi
 
 echo
 echo "== B0 corpus =="

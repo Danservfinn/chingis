@@ -16,19 +16,39 @@ Both are protected paths. See §7 write-set enforcement below.
 | Step | Deliverable | State |
 |---|---|---|
 | §9 | Day-one scaffold | **done** |
-| **B0** | Cross-fleet verification experiment | **apparatus ready — not yet run** (due Sun Aug 9) |
-| B1 | Kernel skeleton | not started (due Sun Aug 16) |
-| B2 | Lane adapters | not started |
-| B3 | Executive v1 | not started — **stack freeze lifts here** |
-| B4 | Routing policy | not started |
-| B5 | Verification stack | not started |
-| B6 | Logging + shadow | not started |
+| **B0** | Cross-fleet verification experiment | **apparatus ready — NOT RUN.** Blocked on plan quota; see below |
+| B1 | Kernel skeleton | **done** — 50-event byte-deterministic replay green |
+| B2 | Lane adapters | **done** — WR verified live; containment tests green |
+| B3 | Executive v1 | **done** — all 10 scenarios green against a scripted executive |
+| B4 | Routing policy | **done** — executive-authored reflexes, TTL, provenance |
+| B5 | Verification stack | **V1 live; V2 gated on B0 and refuses to wire without it; V3 sampling live** |
+| B6 | Logging + shadow | **done** — decision log, shadow scoring, static dashboard |
+| M-ladder | `loop/` scoring, consolidation, promotion gate | scaffolded, unexercised (opens post-B6) |
 
-> **Ground rule 1 is binding: B0 before any harness code.** Every directory below that
-> belongs to B1+ contains a `README.md` stating what it will hold and nothing else.
-> `kernel/`, `adapters/`, `executive/`, and `loop/` are deliberately empty of implementation.
-> If B0's cross-fleet margin fails to clear its pre-registered bar, V2 is dropped from the
-> design and the dual-fleet topology is re-justified on routing grounds before B1 begins.
+**99 tests pass.** `uv run pytest -q`
+
+> **Ground rule 1 said B0 before any harness code, and B0 has not run.** B1–B6 were built
+> anyway, on explicit operator instruction, because B0 is blocked on plan quota rather than
+> on a decision — see *What is actually blocked* below. The substrate does not depend on
+> B0's verdict; only V2 does, and `verify/v2_crossfleet.py` refuses to wire itself without
+> a B0 report rather than quietly assuming the answer.
+
+## What is actually blocked
+
+| Lane | Transport | State |
+|---|---|---|
+| **WR** (raw, primary) | Z.ai coding endpoint, `ZAI_API_KEY` | **live** — verified end-to-end: real model, kernel-gated tool loop, real worktree, V1 green |
+| **W2** (GLM fleet) | Claude Code headless → Z.ai Anthropic endpoint | wired; unexercised |
+| **W1** (Codex fleet) | `codex exec` CLI **or** ChatGPT-plan OAuth → `/backend-api/codex` | **blocked until ~2026-09-01** — the account is `plan_type: free` and its Codex quota is exhausted |
+| **W0** (local) | MLX / LM Studio | no server running |
+
+B0 needs W1 **and** W2, so it cannot run until the Codex quota resets or the plan is
+upgraded. Everything else was built and tested around that.
+
+Also worth knowing: the Codex endpoint offers `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`,
+`gpt-5.4-mini`, and `codex-auto-review`. **Sol is not among them**, so the spec's
+Luna→Sol escalation rung has no transport on this plan; `escalate` currently has to target
+Terra or the operator.
 
 ## Run B0
 
