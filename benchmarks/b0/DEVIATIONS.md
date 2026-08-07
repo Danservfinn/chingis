@@ -173,3 +173,20 @@ operator decides. Wired into `cli.py checks`. Its first run correctly warns that
 volume is 1/week against the 10/week that reaches M1's hundred held-out contracts in a
 quarter, which is exactly the premortem risk the design flagged and is now visible as a
 number rather than a worry.
+
+## H3 — Two more §11 rows had mitigations named and nothing enforcing them
+
+Continuing the failure-table audit. `temperature=0` was correctly set everywhere, so
+"compounding stochasticity" was genuinely mitigated. Two were not:
+
+- **Latency stacking.** §3 targets sub-2s routine decisions and §11 lists the failure mode.
+  `decisions.latency_ms` existed as a column, `DecisionLog.record()` accepted the argument,
+  and nothing ever passed one — the mode was undetectable by construction. Now measured
+  around the executive call and persisted.
+- **Provider outage.** §11's mitigation is "healthcheck drain". `Runtime.drain()` existed
+  and only a human could reach it, so a dead provider kept receiving dispatches until an
+  operator noticed — the silent stall the event model exists to prevent. The kernel now
+  drains a lane after three consecutive failures and emits an event the executive can react
+  to. Three, not two, so a normal fail→retry→reroute never trips it; and a success clears
+  the streak, because draining a lane over one bad contract costs the executive an option
+  for nothing.

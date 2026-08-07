@@ -28,6 +28,9 @@ from .screen import Screener, screen_v1_report
 
 MAX_RETRIES_PER_CONTRACT = 3
 MAX_REFUSALS_BEFORE_HUMAN = 2
+#: Consecutive failures on one lane before the kernel drains it. Above the retry
+#: ceiling so a normal fail->retry->reroute sequence never trips it.
+LANE_FAILURES_BEFORE_DRAIN = 3
 
 
 @dataclass
@@ -38,6 +41,7 @@ class TaskState:
     retries: dict[str, int] = field(default_factory=dict)
     refusals: dict[str, int] = field(default_factory=dict)
     drained_lanes: set[str] = field(default_factory=set)
+    consecutive_failures: dict[str, int] = field(default_factory=dict)
     decisions: list[Decision] = field(default_factory=list)
     awaiting_human: str | None = None
     checkpoints: list[dict] = field(default_factory=list)
@@ -81,6 +85,7 @@ class Runtime:
         self.workdir = workdir or Path(".worktrees")
         self.state = TaskState(task_id, "")
         self.reflex_hits: list[dict] = []
+        self.decision_latencies: list[int] = []
         self._in_reflex: str | None = None
         self.bus.on_any(self._wake)
 
@@ -127,8 +132,14 @@ class Runtime:
             self.ledger.state["_forced_compression"] = note
 
         raw_event = {"type": str(event.type), "seq": event.seq, "payload": event.payload}
+        # §3 targets sub-2s routine decisions and §11 names "latency stacking" as a failure
+        # mode; decisions.latency_ms existed as a column with nothing writing to it, so the
+        # mode was undetectable by construction.
+        t0 = time.perf_counter()
         decision = self.executive.decide(self.ledger.render(), raw_event)
+        latency_ms = int((time.perf_counter() - t0) * 1000)
         decision = apply_confidence_gate(decision)
+        self.decision_latencies.append(latency_ms)
         self.state.decisions.append(decision)
         self._execute(decision, event, bus)
 
@@ -229,6 +240,10 @@ class Runtime:
                    "wall_s": round(wall, 2), "cost": cost,
                    "worker": screened.to_payload()}
 
+        if status == "done":
+            # A success clears the streak: drain is for sustained outage, not for one bad
+            # contract that happened to land on this lane.
+            self.state.consecutive_failures[lane] = 0
         if status == "refused":
             sig = self.screener.screen(str(result.refusal_signal or ""),
                                        source=f"refusal:{lane}")
@@ -240,6 +255,7 @@ class Runtime:
             self.ledger.record_outcome(f"{contract['contract_id']} timed out on {lane}")
             self._emit(bus, EventType.TIMEOUT, payload)
         elif status == "failed":
+            self._note_lane_failure(lane, bus)
             err = self.screener.screen(str((result.artifacts or {}).get("error", "")),
                                        source=f"error:{lane}")
             payload["error"] = err.summary if err.flagged else \
@@ -385,6 +401,23 @@ class Runtime:
                 # An invalid contract is the executive's error, not a kernel crash.
                 self.ledger.state["_contract_rejected"] = f"{cid}: {e}"
         return contract
+
+    def _note_lane_failure(self, lane: str, bus: Bus) -> None:
+        """Sustained failure on one lane is an outage, and §11's answer to an outage is to
+        drain it. Manual drain alone means a dead provider keeps receiving dispatches until
+        an operator notices -- exactly the stall the event model exists to prevent.
+
+        The threshold is consecutive failures, not total: a lane that fails once and then
+        succeeds is healthy, and draining it would cost the executive an option for no
+        reason.
+        """
+        n = self.state.consecutive_failures.get(lane, 0) + 1
+        self.state.consecutive_failures[lane] = n
+        if n >= LANE_FAILURES_BEFORE_DRAIN and lane not in self.state.drained_lanes:
+            self.drain(lane)
+            self._emit(bus, EventType.POLICY_EXCEPTION,
+                       {"reason": f"lane {lane} drained after {n} consecutive failures",
+                        "lane": lane, "auto_drained": True})
 
     def drain(self, lane: str) -> None:
         """Provider outage: take a lane out of rotation. Healthcheck-driven at B6."""

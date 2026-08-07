@@ -96,7 +96,8 @@ def cmd_submit(args) -> int:
         eid = log.event_id_for(task_id, min(i, len(rt.bus.processed) - 1))
         if eid:
             log.record(event_id=eid, ledger_hash=rt.ledger.hash(), decision=d,
-                       model=getattr(executive, "model", executive.name))
+                       model=getattr(executive, "model", executive.name),
+                       latency_ms=rt.decision_latencies[i] if i < len(rt.decision_latencies) else None)
 
     print("\n== events ==")
     for e in rt.bus.processed:

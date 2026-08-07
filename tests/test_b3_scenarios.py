@@ -371,3 +371,56 @@ def test_a_reflex_the_executive_never_reaffirms_stops_firing(conn, tmp_path):
     asyncio.run(rt.run())
     assert not rt.reflex_hits, "an expired reflex still fired"
     assert len(w1.runs) == 0
+
+
+# =========================== §11 failure table: rows that had no enforcement ====
+def test_sustained_lane_failure_auto_drains(conn, tmp_path):
+    """§11 'provider outage -> healthcheck drain'. drain() existed and only a human could
+    reach it, so a dead provider kept receiving dispatches until someone noticed."""
+    from kernel.runtime import LANE_FAILURES_BEFORE_DRAIN
+    dead = FakeAdapter("WR", default=Result(Status.FAILED, {"error": "provider down"}, {"usd": 0.0}))
+    alive = FakeAdapter("W2")
+    script = [dec("dispatch", lane="WR", contract_id=f"c_{i:04d}")
+              for i in range(LANE_FAILURES_BEFORE_DRAIN + 1)]
+    script.append(dec("halt", "terminal_success", status="success"))
+
+    rt = build(conn, tmp_path, script, {"WR": dead, "W2": alive})
+    rt.submit("thing")
+    asyncio.run(rt.run())
+
+    assert "WR" in rt.state.drained_lanes, "a lane failing repeatedly was never drained"
+    assert len(dead.runs) == LANE_FAILURES_BEFORE_DRAIN, \
+        "dispatches continued to a lane already known dead"
+    auto = [e for e in rt.bus.processed if e.payload.get("auto_drained")]
+    assert auto, "the drain was not surfaced as an event the executive can react to"
+
+
+def test_one_failure_then_success_does_not_drain(conn, tmp_path):
+    """Drain is for sustained outage. Draining on a single bad contract would cost the
+    executive an option for no reason -- and scenario 2 is exactly that shape."""
+    flaky = FakeAdapter("WR", outcomes=[
+        Result(Status.FAILED, {"error": "blip"}, {"usd": 0.0}),
+        Result(Status.DONE, {"diff": "ok"}, {"usd": 0.0}),
+        Result(Status.FAILED, {"error": "blip"}, {"usd": 0.0}),
+    ])
+    rt = build(conn, tmp_path, [
+        dec("dispatch", lane="WR", contract_id="c_0001"),
+        dec("retry", contract_id="c_0001", lane="WR"),
+        dec("dispatch", lane="WR", contract_id="c_0002"),
+        dec("halt", "terminal_success", status="success"),
+    ], {"WR": flaky})
+    rt.submit("thing")
+    asyncio.run(rt.run())
+    assert "WR" not in rt.state.drained_lanes, "a success must clear the failure streak"
+
+
+def test_executive_latency_is_measured(conn, tmp_path):
+    """§3 targets sub-2s routine decisions and §11 names latency stacking. The column
+    existed; nothing wrote to it, so the failure mode was undetectable by construction."""
+    rt = build(conn, tmp_path, [dec("dispatch", lane="WR", contract_id="c_0001"),
+                                dec("halt", "terminal_success", status="success")],
+               {"WR": FakeAdapter("WR")})
+    rt.submit("thing")
+    asyncio.run(rt.run())
+    assert len(rt.decision_latencies) == len(rt.state.decisions)
+    assert all(isinstance(x, int) and x >= 0 for x in rt.decision_latencies)
