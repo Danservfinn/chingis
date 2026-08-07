@@ -120,6 +120,35 @@ class QuotaLedger:
             return 0.0
         return sum(u for _, u in pts) / (window_s / 3600.0)
 
+    def calibrate(self, fleet: str, *, min_samples: int = 5) -> dict:
+        """Replace a guessed units-per-contract with an observed one. Plan §6, B4.
+
+            "Estimate units/contract in week one by observation, store per-fleet
+             multipliers ... and let quota_threshold fire on burn-rate anomaly."
+
+        Refuses below `min_samples`. A multiplier derived from two contracts is a guess
+        wearing an observation's clothes, and `source` exists precisely so a number nobody
+        measured can never masquerade as one somebody did.
+        """
+        samples = [u for _, u in self._fleets.get(fleet, [])]
+        if len(samples) < min_samples:
+            return {"fleet": fleet, "source": "estimated", "samples": len(samples),
+                    "reason": f"need >= {min_samples} observations, have {len(samples)}"}
+        observed = sum(samples) / len(samples)
+        self.multipliers[fleet] = observed
+        ordered = sorted(samples)
+        return {"fleet": fleet, "source": "observed", "samples": len(samples),
+                "units_per_contract": round(observed, 3),
+                "median": ordered[len(ordered) // 2],
+                "min": min(samples), "max": max(samples)}
+
+    def units_for(self, fleet: str, default: float = 1.0) -> tuple[float, str]:
+        """Best available estimate, and honestly labelled. Callers that need to know how
+        much to trust the number can ask, instead of having to already know."""
+        if fleet in self.multipliers:
+            return self.multipliers[fleet], "observed"
+        return default, "estimated"
+
     def anomalous(
         self, fleet: str, now_s: float, *, short_s: float = 900, long_s: float = 21600,
         factor: float = 3.0,

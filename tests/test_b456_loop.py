@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import pathlib
 from pathlib import Path
 
 import pytest
@@ -266,3 +267,70 @@ def test_loop_cannot_write_outside_its_write_set():
         r = check_promotion(agreement=a, seeded_catch_rate=0.9, b0_catch_rate=0.75,
                             eval_delta=0.1, write_set_touched=[illegal])
         assert not r.promoted, f"{illegal} must not be writable by the loop"
+
+
+# ================================================= §6 gaps closed at review ====
+def test_quota_calibration_refuses_a_guess_dressed_as_an_observation():
+    """B4 replaces guessed units with observed ones. A multiplier from two contracts is
+    still a guess, and `source` exists so it cannot pretend otherwise."""
+    from kernel.meters import QuotaLedger
+    q = QuotaLedger()
+    for i in range(3):
+        q.record("W1", 1.0, at_s=i * 60)
+    assert q.calibrate("W1")["source"] == "estimated"
+    assert q.units_for("W1") == (1.0, "estimated")
+
+    for i in range(3, 12):
+        q.record("W1", 2.0, at_s=i * 60)
+    cal = q.calibrate("W1")
+    assert cal["source"] == "observed" and cal["samples"] == 12
+    units, source = q.units_for("W1")
+    assert source == "observed" and 1.0 < units < 2.0
+
+
+def test_heldout_rotation_is_deterministic_and_verifiable(tmp_path, monkeypatch):
+    """M4 asks whether improvement is general or memorized. That answer is only worth
+    anything if the held-out set was provably withheld."""
+    import ops.rotate_heldout as rot
+    bench, held = tmp_path / "contracts", tmp_path / "heldout"
+    bench.mkdir(); held.mkdir()
+    for i in range(20):
+        (bench / f"c_{i:04d}.json").write_text(json.dumps({"contract_id": f"c_{i:04d}"}))
+    monkeypatch.setattr(rot, "BENCH", bench)
+    monkeypatch.setattr(rot, "HELDOUT", held)
+
+    first = [p.name for p in rot.choose("2026-09")]
+    assert first == [p.name for p in rot.choose("2026-09")], "same stamp must pick the same set"
+    assert len(first) == 4, "~20% of 20"
+    assert rot.choose("2026-10") != rot.choose("2026-09")
+
+    assert rot.rotate("2026-09", commit=True) == 0
+    assert rot.verify() == 0
+
+    # A held-out contract edited after withholding is no longer held out.
+    moved = next((held / "contracts").glob("c_*.json"))
+    moved.write_text('{"contract_id": "tampered"}')
+    assert rot.verify() == 1
+
+
+def test_m0_success_excludes_test_weakening():
+    """Without this the dumb shell could 'win' by deleting failing tests -- rewarding the
+    exact behaviour the seeded corpus exists to detect."""
+    from benchmarks.m0_control import M0Result, success_per_dollar
+    rows = [M0Result("c_0001", "done", True, 1, 0.10, 5.0),
+            M0Result("c_0002", "done", True, 1, 0.10, 5.0, test_weakening=["deleted test"]),
+            M0Result("c_0003", "failed", False, 2, 0.20, 9.0)]
+    s = success_per_dollar(rows)
+    assert s["v1_passed"] == 2 and s["honest_successes"] == 1
+    assert s["disqualified_for_test_weakening"] == 1
+    assert s["success_per_dollar"] == round(1 / 0.40, 2)
+
+
+def test_m0_policy_is_frozen():
+    """M0 is the thing Chingis must beat. Every knob it gains is one less thing the
+    comparison measures."""
+    import benchmarks.m0_control as m0
+    assert m0.FIXED_RETRIES == 1 and m0.FIXED_LANE in ("WR", "W1", "W2")
+    src = pathlib.Path("benchmarks/m0_control.py").read_text()
+    for forbidden in ("LunaClient", "PolicyRuntime", "Runtime("):
+        assert forbidden not in src, f"M0 must have no executive or policy: found {forbidden}"
