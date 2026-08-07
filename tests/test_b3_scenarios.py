@@ -289,3 +289,85 @@ def test_all_ten_scenarios_present():
     names = [n for n, _ in inspect.getmembers(sys.modules[__name__], inspect.isfunction)
              if n.startswith("test_") and n[5:7].isdigit()]
     assert len({n[5:7] for n in names}) == 10, f"expected 10 scenarios, found {sorted(names)}"
+
+
+# ============================================ B4 gate: the full authoring cycle ====
+def test_executive_authors_a_reflex_that_later_fires(conn, tmp_path):
+    """B4's acceptance criterion, end to end.
+
+    Plan §5: "E-authored reflex observed in audit with provenance + TTL."
+
+    Everything before this tested the pieces: that a patch cannot claim developer
+    authorship, that TTLs expire, that reflexes short-circuit. Nothing tested the loop the
+    criterion actually names -- executive emits edit_policy, a reflex is created with
+    stamped provenance, it survives to disk, and it then fires on a later matching event
+    with its causing reflex recorded in the audit log.
+    """
+    policy = PolicyRuntime(tmp_path / "authored.yaml")
+    wr, w1 = FakeAdapter("WR"), FakeAdapter("W1")
+    stamps = [f"2026-08-06T06:{m:02d}:{s:02d}Z" for m in range(30, 50) for s in range(0, 60, 5)]
+
+    rt = Runtime("t_b4", ScriptedExecutive([
+        # 1. The executive notices a pattern and writes itself a reflex.
+        dec("edit_policy", "quota_peak_multiplier", conf=0.9,
+            policy_patch={"match": {"event_type": "worker_done"},
+                          "action": {"lane": "W1", "contract_id": "c_0002"},
+                          "ttl_days": 30}),
+        # 2. Then dispatches normally. The resulting worker_done should hit the reflex.
+        dec("dispatch", lane="WR", contract_id="c_0001"),
+        dec("halt", "terminal_success", status="success"),
+    ]), {"WR": wr, "W1": w1}, audit=AuditLog(conn), meters=Meters(usd=5, quota_units=100),
+        deps=Deps.deterministic(stamps), policy=policy, workdir=tmp_path / "wt")
+    rt.submit("routine coding")
+    # A second event is needed for the executive to act again: edit_policy emits nothing,
+    # so without this the queue drains and the reflex never gets an event to match.
+    rt.bus.emit(EventType.HUMAN_INPUT, {"message": "carry on"})
+    asyncio.run(rt.run())
+
+    # Provenance is stamped by the runtime, never supplied by the patch.
+    assert len(policy.reflexes) == 1
+    reflex = policy.reflexes[0]
+    assert reflex.author == "executive"
+    assert reflex.created_by.startswith("d_")
+    assert reflex.ttl_days == 30
+    assert reflex.created_ts.startswith("2026-08-06")
+
+    # It survived to disk -- otherwise "observed in audit" dies with the process.
+    reloaded = PolicyRuntime(tmp_path / "authored.yaml")
+    assert reloaded.reflexes[0].created_by == reflex.created_by
+
+    # It actually fired, and the audit log records WHICH reflex caused the effect.
+    assert rt.reflex_hits, "the authored reflex never fired on a later event"
+    assert rt.reflex_hits[0]["reflex"]["created_by"] == reflex.created_by
+    assert len(w1.runs) == 1, "the reflex should have routed a dispatch to W1"
+
+    caused = [e for e in rt.bus.processed if e.payload.get("_reflex")]
+    assert caused, "no event carries the provenance of the reflex that caused it"
+    assert caused[0].payload["_reflex"] == reflex.created_by
+
+    # And the ledger records the authorship for the executive's own future context.
+    assert any("authored reflex" in o for o in rt.ledger.recent_outcomes)
+
+
+def test_a_reflex_the_executive_never_reaffirms_stops_firing(conn, tmp_path):
+    """Rigidity decays by default. An expired reflex must fall back to waking the
+    executive, not silently keep routing."""
+    import datetime as dt
+    now = dt.datetime(2026, 8, 6, tzinfo=dt.UTC)
+    policy = PolicyRuntime(tmp_path / "decay.yaml", now_fn=lambda: now)
+    policy.author({"match": {"event_type": "worker_done"}, "action": {"lane": "W1"},
+                   "ttl_days": 30}, decision_id="d_00001", reason_code="quota_peak_multiplier")
+    assert len(policy.reflexes) == 1
+
+    policy._now = lambda: now + dt.timedelta(days=31)
+    wr, w1 = FakeAdapter("WR"), FakeAdapter("W1")
+    rt = Runtime("t_decay", ScriptedExecutive([
+        dec("dispatch", lane="WR", contract_id="c_0001"),
+        dec("halt", "terminal_success", status="success"),
+    ]), {"WR": wr, "W1": w1}, audit=AuditLog(conn), meters=Meters(usd=5, quota_units=100),
+        deps=Deps.deterministic([f"2026-09-06T12:00:{i:02d}Z" for i in range(40)]),
+        policy=policy, workdir=tmp_path / "wt")
+    rt.submit("routine")
+    asyncio.run(rt.run())
+    assert not rt.reflex_hits, "an expired reflex still fired"
+    assert len(w1.runs) == 0

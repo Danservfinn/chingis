@@ -316,9 +316,17 @@ class Runtime:
             return
         patch = d.params.get("policy_patch") or {}
         try:
+            # event.ts, not the wall clock: reflex authoring stays inside the same
+            # determinism guarantee as everything else the kernel writes.
             entry = self.policy.author(patch, decision_id=f"d_{len(self.state.decisions):05d}",
-                                       reason_code=d.reason_code)
-            self.ledger.record_outcome(f"authored reflex {entry.reason_code} ttl={entry.ttl_days}d")
+                                       reason_code=d.reason_code, now_iso=event.ts)
+            # Persist, or the reflex exists only for this process and B4's "observed in
+            # audit with provenance + TTL" is unverifiable after the run ends.
+            if getattr(self.policy, "path", None) is not None:
+                self.policy.save()
+            self.ledger.record_outcome(
+                f"authored reflex {entry.reason_code} ttl={entry.ttl_days}d "
+                f"by {entry.created_by}")
         except ValueError as e:
             self._emit(bus, EventType.DECISION_INVALID, {"verb": "edit_policy", "reason": str(e)})
 

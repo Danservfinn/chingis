@@ -91,8 +91,16 @@ class PolicyRuntime:
                       created_ts=raw.get("created_ts", "1970-01-01T00:00:00Z"))
 
     # ------------------------------------------------------------------ author --
-    def author(self, patch: dict, *, decision_id: str, reason_code: str) -> Reflex:
-        """The ONLY way a reflex is created. Provenance is stamped here, not supplied."""
+    def author(self, patch: dict, *, decision_id: str, reason_code: str,
+               now_iso: str | None = None) -> Reflex:
+        """The ONLY way a reflex is created. Provenance is stamped here, not supplied.
+
+        `now_iso` should be the timestamp of the event that triggered the authoring. Taking
+        it from the caller rather than the wall clock keeps reflex creation inside the
+        determinism guarantee the rest of the kernel maintains through Deps -- a reflex
+        stamped with `datetime.now()` cannot be reproduced on replay, and a replay that
+        cannot reproduce the adaptive plane's own state is not a replay of the run.
+        """
         ttl = int(patch.get("ttl_days", 30))
         if ttl <= 0:
             raise PolicyError("ttl_days must be positive; an immortal reflex is rigidity")
@@ -102,7 +110,7 @@ class PolicyRuntime:
             match=patch.get("match", {}), action=patch["action"],
             author="executive",                       # never taken from the patch
             reason_code=reason_code, created_by=decision_id, ttl_days=ttl,
-            created_ts=self._now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            created_ts=now_iso or self._now().strftime("%Y-%m-%dT%H:%M:%SZ"),
         )
         self.reflexes.append(reflex)
         return reflex

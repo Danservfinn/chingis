@@ -92,3 +92,22 @@ killed a run that had 18 of 40 artifacts. It now logs and **skips the contract**
 worktree should cost one contract, not every contract after it.
 
 No artifacts were lost — the runner is resumable and anything already on disk is skipped.
+
+---
+
+# Harness findings (not deviations — defects found while running)
+
+## H1 — Reflex authoring escaped the determinism guarantee
+
+Found while writing the B4 end-to-end test, which had never existed: `edit_policy` was
+implemented but no test exercised the criterion the plan actually names — *"E-authored
+reflex observed in audit with provenance + TTL."*
+
+`PolicyRuntime.author()` stamped `created_ts` from `datetime.now()`, bypassing the injected
+`Deps` clock that the entire B1 replay guarantee rests on. A reflex authored during a run
+therefore could not be reproduced on replay — and a replay that cannot reproduce the
+adaptive plane's own state is not a replay of the run. It now takes the timestamp of the
+event that triggered the authoring.
+
+The reflex was also never persisted, so it existed only for the life of the process. "Observed
+in audit" is unverifiable if the thing being observed vanishes at exit.
