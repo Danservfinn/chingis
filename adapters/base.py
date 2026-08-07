@@ -75,6 +75,56 @@ def detect_refusal(text: str, *, diff_empty: bool) -> str | None:
     return None
 
 
+class AdapterError(RuntimeError):
+    pass
+
+
+# ------------------------------------------------------------ artifact hygiene --
+# The operator's own tooling writes into the worktree. claude-mem drops CLAUDE.md files
+# wherever Claude Code runs, and the packaged lanes ARE Claude Code -- so without this,
+# every W1 and W2 artifact carries editor noise the reviewer then reads as part of the
+# change. During B0 that is not cosmetic: it adds a spurious file to 60 diffs, and
+# `src/CLAUDE.md` sits inside a `src/**` context_ref, so diff_scope would not even flag it.
+#
+# Isolation would be cleaner, but `--bare` and CLAUDE_CONFIG_DIR both disable the Keychain
+# read that W1's OAuth depends on. So: remove at the artifact boundary, and RECORD every
+# removal. A silent strip would be its own integrity problem.
+TOOLING_ARTIFACTS: tuple[tuple[str, str], ...] = (
+    ("CLAUDE.md", "<claude-mem-context>"),   # (filename, required signature)
+    ("AGENTS.md", "<claude-mem-context>"),
+)
+
+
+def strip_tooling_artifacts(worktree: Path, tracked: set[str] | None = None) -> list[str]:
+    """Remove tool-generated files the worker did not author. Returns what was removed.
+
+    Three conditions must all hold, so a contract that legitimately edits a CLAUDE.md is
+    untouched: the filename matches, the file was NOT in the base commit, and the content
+    carries the tool's own signature.
+    """
+    removed: list[str] = []
+    tracked = tracked if tracked is not None else _tracked_files(worktree)
+    for name, signature in TOOLING_ARTIFACTS:
+        for path in worktree.rglob(name):
+            rel = str(path.relative_to(worktree))
+            if rel in tracked:
+                continue                      # pre-existing: the worker may have edited it
+            try:
+                if signature not in path.read_text(encoding="utf-8", errors="replace"):
+                    continue                  # not this tool's output; leave it alone
+            except OSError:
+                continue
+            path.unlink()
+            removed.append(rel)
+    return removed
+
+
+def _tracked_files(worktree: Path) -> set[str]:
+    out = subprocess.run(["git", "-C", str(worktree), "ls-tree", "-r", "--name-only", "HEAD"],
+                         capture_output=True, text=True)
+    return set(out.stdout.split())
+
+
 # ------------------------------------------------------------------- worktrees --
 class Worktree:
     """A disposable git worktree. The diff is the artifact; the worktree is the blast radius."""
@@ -91,11 +141,25 @@ class Worktree:
         if self.path.exists():
             shutil.rmtree(self.path, ignore_errors=True)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(
+
+        # Prune AFTER removing the directory, not before. A run killed mid-flight leaves
+        # both a directory and a registration; deleting the directory first is what makes
+        # the registration prunable. Getting this backwards leaves a stale entry that
+        # fails every subsequent `worktree add` at this path with exit 128 -- which during
+        # B0's 40 generations would look like a fleet failure rather than a local one.
+        subprocess.run(["git", "-C", str(self.repo), "worktree", "prune"],
+                       capture_output=True)
+
+        p = subprocess.run(
             ["git", "-C", str(self.repo), "worktree", "add", "--detach", "--quiet",
              str(self.path), self.base_ref],
-            check=True, capture_output=True,
+            capture_output=True, text=True,
         )
+        if p.returncode != 0:
+            raise AdapterError(
+                f"could not create worktree at {self.path} from {self.repo}@{self.base_ref}: "
+                f"{(p.stderr or p.stdout).strip()[:300]}"
+            )
         return self.path
 
     def diff(self) -> str:
@@ -119,10 +183,6 @@ class Adapter(Protocol):
 
     def healthcheck(self) -> tuple[bool, str]: ...
     def run(self, contract: dict, worktree: Path) -> Result: ...
-
-
-class AdapterError(RuntimeError):
-    pass
 
 
 def load_contract(path: Path | str) -> dict:

@@ -58,13 +58,20 @@ fleet_generate() {
 
   case "$fleet" in
     W1)
-      gtimeout "${B0_WALL_S}s" codex exec --json --sandbox workspace-write \
-        --cd "$worktree" "$(cat "$prompt")" > "$out" 2>"$out.stderr"
+      # Anthropic natively. env -u strips any redirect that would silently turn W1 into a
+      # second W2 -- same lab twice, reported as cross-fleet. Credentials come from the
+      # Keychain via Claude Code's own OAuth.
+      env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY \
+        gtimeout "${B0_WALL_S}s" claude -p --output-format json \
+        --permission-mode acceptEdits \
+        --model "${B0_W1_MODEL:-sonnet}" --add-dir "$worktree" "$(cat "$prompt")" \
+        > "$out" 2>"$out.stderr"
       ;;
     W2)
       ANTHROPIC_BASE_URL="${ZAI_ANTHROPIC_ENDPOINT:-https://api.z.ai/api/anthropic}" \
       ANTHROPIC_AUTH_TOKEN="${ZAI_KEY:-$ZAI_API_KEY}" \
       gtimeout "${B0_WALL_S}s" claude -p --output-format json \
+        --permission-mode acceptEdits \
         --add-dir "$worktree" "$(cat "$prompt")" > "$out" 2>"$out.stderr"
       ;;
     *) echo "unknown fleet: $fleet" >&2; return 2 ;;
@@ -89,8 +96,10 @@ EOF
 
   case "$fleet" in
     W1)
-      gtimeout "${B0_WALL_S}s" codex exec --json --sandbox read-only \
-        "$(cat "$prompt")" > "$raw" 2>"$raw.stderr" || true
+      env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY \
+        gtimeout "${B0_WALL_S}s" claude -p --output-format json \
+        --model "${B0_W1_MODEL:-sonnet}" "$(cat "$prompt")" \
+        > "$raw" 2>"$raw.stderr" || true
       ;;
     W2)
       ANTHROPIC_BASE_URL="${ZAI_ANTHROPIC_ENDPOINT:-https://api.z.ai/api/anthropic}" \

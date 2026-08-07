@@ -20,6 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
+from adapters.claude_adapter import ClaudeAdapter            # noqa: E402
 from adapters.glm_cc_adapter import GlmCodeAdapter          # noqa: E402
 from adapters.local_adapter import LocalAdapter             # noqa: E402
 from adapters.raw_adapter import RawAdapter                 # noqa: E402
@@ -39,11 +40,11 @@ from verify.v1_runners import V1Runner                      # noqa: E402
 
 
 def build_adapters(registry: Registry) -> dict:
-    return {"WR": RawAdapter(registry), "W2": GlmCodeAdapter(),
-            "W0": LocalAdapter()}
-    # W1 is omitted while its account has no allowance. An absent adapter produces a
-    # policy_exception the executive can route around -- better than a lane that accepts
-    # dispatches and always fails.
+    # W1 and W2 run the SAME packaged tool against DIFFERENT labs, so the cross-fleet
+    # contrast varies only the lab. See adapters/claude_adapter.py for why that is a
+    # better pairing than the Codex-vs-GLM one the plan specified.
+    return {"WR": RawAdapter(registry), "W1": ClaudeAdapter(),
+            "W2": GlmCodeAdapter(), "W0": LocalAdapter()}
 
 
 def cmd_health(args) -> int:
@@ -52,7 +53,6 @@ def cmd_health(args) -> int:
     for name, ad in build_adapters(registry).items():
         ok, msg = ad.healthcheck()
         print(f"  {'ok  ' if ok else 'DOWN'} {name}: {msg[:110]}")
-    print("  DOWN W1: omitted — see ./benchmarks/b0/preflight.sh for the quota state")
 
     print("== executive ==")
     ex = LunaClient(transport=args.transport, model=args.model)

@@ -281,14 +281,36 @@ def test_cli_exposes_the_operator_surface():
         assert hasattr(cli, f"cmd_{cmd}"), f"no operator command for {cmd}"
 
 
-def test_w1_is_omitted_while_its_quota_is_spent():
-    """An absent adapter yields a policy_exception the executive can route around --
-    strictly better than a lane that accepts dispatches and always fails."""
+def test_w1_and_w2_are_two_distinct_labs():
+    """The whole premise of cross-fleet verification. W1 and W2 run the SAME packaged tool
+    and differ only by environment, so this is the one property that can be silently lost."""
     import cli
     from kernel.capabilities import Registry
     lanes = cli.build_adapters(Registry())
-    assert "W1" not in lanes
-    assert {"WR", "W2", "W0"} <= set(lanes)
+    assert {"WR", "W1", "W2", "W0"} == set(lanes)
+    assert lanes["W1"].lab == "anthropic"
+    assert "z.ai" in lanes["W2"].endpoint.lower()
+
+
+def test_redirect_vars_cannot_silently_collapse_w1_into_w2(monkeypatch):
+    """If ANTHROPIC_BASE_URL leaks in, W1 runs against the same lab as W2 and B0 reports
+    'cross-fleet' while measuring self-review -- a wrong number that looks like a right
+    one. It must fail loudly instead."""
+    from adapters.claude_adapter import ClaudeAdapter, FleetContamination, assert_native
+    for var in ("ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY"):
+        monkeypatch.setenv(var, "https://api.z.ai/api/anthropic")
+        with pytest.raises(FleetContamination, match="same lab"):
+            assert_native()
+        ok, msg = ClaudeAdapter().healthcheck()
+        assert not ok and "same lab" in msg
+        monkeypatch.delenv(var)
+
+
+def test_clean_env_strips_every_redirect(monkeypatch):
+    from adapters.claude_adapter import REDIRECT_VARS, _clean_env
+    for v in REDIRECT_VARS:
+        monkeypatch.setenv(v, "x")
+    assert not (set(REDIRECT_VARS) & set(_clean_env()))
 
 
 def test_operator_owns_the_blast_radius(conn, tmp_path):

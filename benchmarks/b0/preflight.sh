@@ -47,24 +47,22 @@ fi
 echo
 echo "== Credentials =="
 [[ -n "${ZAI_API_KEY:-}${ZAI_KEY:-}" ]] && pass "Z.ai key set (WR + W2)" || fail "ZAI_API_KEY unset — blocks the WR raw lane and both W2 arms"
-if [[ -f "$HOME/.codex/auth.json" ]]; then
-  pass "Codex OAuth credentials present (~/.codex/auth.json)"
-  # /models returns 200 even when the account is exhausted; only a real generation shows
-  # the 429. Costs ~20 tokens, and it is the difference between discovering the wall now
-  # and discovering it 20 invocations into an 80-invocation experiment.
-  q=$(uv run python -c "
-from adapters.codex_oauth import quota_status
-import json; print(json.dumps(quota_status()))" 2>/dev/null)
-  state=$(echo "$q" | python3 -c "import json,sys; print(json.load(sys.stdin).get('state','unknown'))" 2>/dev/null || echo unknown)
-  case "$state" in
-    available) pass "Codex quota: allowance available" ;;
-    quota_exhausted)
-      d=$(echo "$q" | python3 -c "import json,sys; d=json.load(sys.stdin); print(f\"plan={d.get('plan_type')} resets in {d.get('resets_in_days',0):.1f}d\")" 2>/dev/null)
-      fail "Codex quota EXHAUSTED ($d) — blocks both W1 arms, so B0 cannot run" ;;
-    *) soft "Codex quota: could not determine ($state)" ;;
-  esac
+# W1 is Anthropic-native. The single thing that can silently invalidate B0 is a redirect
+# variable turning W1 into a second W2 -- same lab twice, reported as cross-fleet.
+leaked=""
+for v in ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY; do
+  [[ -n "$(printenv "$v" 2>/dev/null)" ]] && leaked="$leaked $v"
+done
+if [[ -n "$leaked" ]]; then
+  fail "FLEET CONTAMINATION:$leaked set — W1 would run against the same lab as W2, and B0 would measure self-review while reporting cross-fleet"
 else
-  fail "no ~/.codex/auth.json — run 'codex login'; blocks both W1 arms"
+  pass "W1/W2 are two distinct labs (no redirect vars leaked)"
+fi
+
+if security find-generic-password -s "Claude Code-credentials" >/dev/null 2>&1; then
+  pass "Claude Code OAuth present (Keychain) — W1 via Anthropic"
+else
+  fail "no Claude Code credentials — run 'claude' once to log in; blocks both W1 arms"
 fi
 
 echo

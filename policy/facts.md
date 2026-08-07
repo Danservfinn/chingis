@@ -13,8 +13,8 @@ rule. (Spec §6)
 | Lane | Billing | Opacity | Notes |
 |---|---|---|---|
 | WR | Metered per token | None — every step is in the audit log | The faithful path. Chingis-owned tool loop: `bash`, `read_file`, `apply_patch`, worktree-scoped. |
-| W1 | Flat-rate (ChatGPT plan) | Fixed inner shell, not inspectable | Strong repo/diff workflow. Expect safety-stack refusals on security-flavored tasks. |
-| W2 | Flat-rate (GLM Coding Plan) | Fixed inner shell, not inspectable | 1M-context inner model. Quota is prompt-based with peak multipliers. |
+| W1 | Flat-rate (Claude subscription) | Fixed inner shell, not inspectable | **Anthropic.** Claude Code headless, native. Same tool as W2, different lab — the cross-fleet contrast varies only the lab. |
+| W2 | Flat-rate (GLM Coding Plan) | Fixed inner shell, not inspectable | **Z.ai / GLM.** Claude Code headless → Z.ai endpoint. Quota is prompt-based with peak multipliers. |
 | W0 | Electricity | None | Local MLX. Summarize, triage, injection pre-screen, shadow scoring. |
 
 ## Quota
@@ -36,8 +36,8 @@ rule. (Spec §6)
 
 | Tier | Use | Cost shape |
 |---|---|---|
-| Luna | Routine dispatch / retry / verify decisions, minimal reasoning, cached prefix | ~$0.002/decision, target < 2s |
-| Sol | `revise_plan` / `edit_policy` / post-failure strategy, high reasoning | Seconds-to-minutes; rare by design |
+| glm-4.6 / glm-5.2 | **Executive of record**, via the Z.ai coding endpoint. Emits schema-valid decisions. | Flat under the coding plan |
+| Sol | Escalation rung — **no transport**. Not offered on the current Codex plan. Escalate to the operator instead. | n/a |
 | Terra | Mid-tier worker duty on W1 | Flat under plan |
 | GLM-5.2 | WR worker duty, W2 inner model | Metered on WR, flat on W2 |
 
@@ -49,3 +49,13 @@ Stated so the executive can reason about its own uncertainty rather than confabu
 - Whether cross-fleet review actually beats self-review — **unmeasured until B0**.
   Until B0 reports, the executive should not treat V2 as established signal.
 - Refusal rates per task type — unmeasured.
+
+## Provider substitution — 2026-08-06
+
+W1 was specified as the Codex fleet. That account is free-tier and its allowance is spent
+until ~2026-09-01, so **W1 is now Claude Code headless against Anthropic**. Spec §5 already
+names Claude as a V3 verifier, so this is a substitution rather than a new vendor.
+
+Consequence worth carrying: any B0 number measures **Anthropic ↔ GLM**. If Codex is ever
+restored as W1, the B0-measured catch rate is not a valid floor for that pairing and B5's
+acceptance criterion would need a re-run, not a re-use.

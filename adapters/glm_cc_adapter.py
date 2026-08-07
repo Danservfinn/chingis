@@ -13,7 +13,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from .base import Result, Status, detect_refusal
+from .base import Result, Status, detect_refusal, strip_tooling_artifacts
 
 CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 DEFAULT_ENDPOINT = "https://api.z.ai/api/anthropic"
@@ -42,7 +42,10 @@ class GlmCodeAdapter:
         prompt = (f"{contract['objective']}\n\n"
                   f"Relevant paths: {', '.join(contract.get('context_refs', []))}\n"
                   "Work only inside this checkout. Make the change and stop.")
-        cmd = [CLAUDE_BIN, "-p", "--output-format", "json", "--add-dir", str(worktree), prompt]
+        # See adapters/claude_adapter.py: headless Claude Code cannot write without this.
+        cmd = [CLAUDE_BIN, "-p", "--output-format", "json",
+               "--permission-mode", "acceptEdits",
+               "--add-dir", str(worktree), prompt]
         try:
             p = subprocess.run(cmd, capture_output=True, text=True, timeout=wall,
                                env=env, cwd=str(worktree))
@@ -54,11 +57,13 @@ class GlmCodeAdapter:
             text = json.loads(p.stdout).get("result", p.stdout)
         except (json.JSONDecodeError, AttributeError):
             pass
+        stripped = strip_tooling_artifacts(worktree)
         diff = _diff(worktree)
         refusal = detect_refusal(text, diff_empty=not diff.strip())
         status = (Status.REFUSED if refusal else
                   Status.DONE if p.returncode == 0 else Status.FAILED)
-        return Result(status, {"diff": diff, "summary": text[:8000]},
+        return Result(status, {"diff": diff, "summary": text[:8000],
+                       "stripped_tooling_artifacts": stripped},
                       {"wall_s": round(time.time() - started, 2), "quota_units_est": 1.0},
                       refusal_signal=refusal, lane=self.lane, model="glm-5.2")
 

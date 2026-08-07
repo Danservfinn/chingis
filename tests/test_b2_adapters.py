@@ -172,3 +172,47 @@ def test_worktree_is_disposable(repo, tmp_path):
         diff = Worktree(repo, "HEAD", wt_path).diff()
         assert "'''hi'''" in diff
     assert not wt_path.exists(), "the worktree is the blast radius; it must not survive"
+
+
+# ------------------------------------------------- artifact hygiene (W1/W2) ----
+def test_tooling_artifacts_are_stripped_from_the_diff(tmp_path):
+    """The packaged lanes ARE Claude Code, and the operator's own plugins write into the
+    worktree. Without this, every W1/W2 artifact carries editor noise the reviewer reads
+    as part of the change -- and `src/CLAUDE.md` sits inside a `src/**` context_ref, so
+    diff_scope would not even flag it."""
+    from adapters.base import strip_tooling_artifacts
+
+    wt = tmp_path / "wt"
+    (wt / "src").mkdir(parents=True)
+    (wt / "src" / "CLAUDE.md").write_text("<claude-mem-context>\n# Recent Activity\n")
+    (wt / "src" / "real.py").write_text("x = 1")
+    removed = strip_tooling_artifacts(wt, tracked=set())
+    assert removed == ["src/CLAUDE.md"]
+    assert not (wt / "src" / "CLAUDE.md").exists()
+    assert (wt / "src" / "real.py").exists()
+
+
+def test_a_contract_may_still_edit_a_real_claude_md(tmp_path):
+    """Three conditions must hold before anything is removed. A CLAUDE.md that was in the
+    base commit, or that lacks the tool's signature, is the worker's business."""
+    from adapters.base import strip_tooling_artifacts
+
+    wt = tmp_path / "wt2"
+    wt.mkdir()
+    (wt / "CLAUDE.md").write_text("# Project instructions\nRun tests with pytest.\n")
+    assert strip_tooling_artifacts(wt, tracked=set()) == [], "no tool signature -> keep"
+
+    (wt / "CLAUDE.md").write_text("<claude-mem-context>\nstuff\n")
+    assert strip_tooling_artifacts(wt, tracked={"CLAUDE.md"}) == [], "pre-existing -> keep"
+
+
+def test_packaged_lanes_grant_edit_permission(tmp_path):
+    """Headless Claude Code will not write a file without a permission grant. Without it
+    the worker returns an explanation and no diff, which the refusal heuristic then
+    reports as a refusal -- a configuration error wearing a safety-refusal costume."""
+    import inspect
+    from adapters import claude_adapter, glm_cc_adapter
+    for mod in (claude_adapter, glm_cc_adapter):
+        src = inspect.getsource(mod)
+        assert "--permission-mode" in src and "acceptEdits" in src
+        assert "bypassPermissions" not in src, "the grant must stay scoped"
