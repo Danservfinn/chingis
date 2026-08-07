@@ -4,8 +4,10 @@ Two consumption modes, selected by `mode`:
   "cli"   -- `codex exec` headless, per spec §4. Flags verified against 0.146.0 at B2.
   "oauth" -- ChatGPT-plan OAuth against the Codex coding endpoint, per operator direction.
 
-The CLI mode is the spec-faithful one ("subscriptions are agents, not endpoints").
-Both share the plan's quota, so both hit the same wall when it is exhausted.
+OAuth is the default per operator direction (2026-08-06). The CLI mode remains available
+and is the spec-faithful one ("subscriptions are agents, not endpoints"). Both draw on the
+SAME account allowance, so switching between them does nothing when the quota is spent --
+the wall is the account, not the transport.
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ CODEX_BIN = os.environ.get("CODEX_BIN", "codex")
 class CodexAdapter:
     lane = "W1"
 
-    def __init__(self, mode: str = "cli", model: str | None = None) -> None:
+    def __init__(self, mode: str = "oauth", model: str | None = None) -> None:
         self.mode = mode
         self.model = model
 

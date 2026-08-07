@@ -182,3 +182,31 @@ def respond(model: str, instructions: str, prompt: str,
         elif ev.get("type") == "response.completed":
             usage = ev.get("response", {}).get("usage", {}) or {}
     return "".join(text), usage
+
+
+def quota_status(auth: CodexAuth | None = None) -> dict:
+    """Is there actually allowance left? Costs ~20 tokens to find out.
+
+    /models returns 200 even when the account is exhausted -- the 429 only appears on a
+    real generation. So a preflight that only lists models will cheerfully green-light an
+    80-invocation experiment against a wall. This makes the smallest possible real request.
+    """
+    try:
+        auth = auth or CodexAuth.load()
+    except CodexAuthError as e:
+        return {"ok": False, "reason": str(e), "state": "no_credentials"}
+
+    body = {"model": "gpt-5.4-mini", "instructions": "Reply with one word.",
+            "input": [{"role": "user", "content": [{"type": "input_text", "text": "ok"}]}],
+            "stream": True, "store": False}
+    try:
+        status, payload = request("/responses", method="POST", body=body,
+                                  auth=auth, timeout=45, stream=True)
+    except CodexQuotaExhausted as e:
+        return {"ok": False, "state": "quota_exhausted", "plan_type": e.plan_type,
+                "resets_at": e.resets_at, "resets_in_days": e.resets_in_days,
+                "reason": str(e)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "state": "error", "reason": f"{type(e).__name__}: {e}"}
+    return {"ok": status == 200, "state": "available" if status == 200 else f"http_{status}",
+            "reason": "" if status == 200 else payload[:200]}
