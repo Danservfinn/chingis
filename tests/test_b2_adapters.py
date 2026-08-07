@@ -211,8 +211,11 @@ def test_packaged_lanes_grant_edit_permission(tmp_path):
     the worker returns an explanation and no diff, which the refusal heuristic then
     reports as a refusal -- a configuration error wearing a safety-refusal costume."""
     import inspect
+    import re
     from adapters import claude_adapter, glm_cc_adapter
     for mod in (claude_adapter, glm_cc_adapter):
         src = inspect.getsource(mod)
-        assert "--permission-mode" in src and "acceptEdits" in src
-        assert "bypassPermissions" not in src, "the grant must stay scoped"
+        assert '"--permission-mode"' in src and '"acceptEdits"' in src
+        # Match the ARGUMENT, not the word: the docstring says "acceptEdits, not
+        # bypassPermissions", and a substring check on prose would fail on its own comment.
+        assert not re.search(r'"bypassPermissions"', src), "the grant must stay scoped"
