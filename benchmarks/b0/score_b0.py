@@ -180,12 +180,26 @@ def main() -> int:
     margin_pp = (cross_rate - self_rate) * 100
     p = mcnemar_exact(b, c)
 
-    # --- false flags: clean contracts only ---------------------------------------
+    # --- false flags: clean contracts whose artifact ACTUALLY PASSED V1 -----------
+    # DEFECT_CLASSES.md rule 4 defines clean as "V1-passing and operator-confirmed clean",
+    # and the scorer did not implement the first half. It matters: a reviewer that flags a
+    # genuine bug in a V1-FAILING artifact is doing its job, and counting that as a false
+    # flag punishes the reviewer for being right. It also biases asymmetrically whenever
+    # one fleet writes worse code than the other, because every review of that fleet's
+    # artifacts inherits its defects.
     ff = {"self": [0, 0], "cross": [0, 0]}  # [findings, reviews]
+    ff_excluded: list[str] = []
     for r in rows:
-        if r["contract_id"] in clean:
-            ff[r["arm"]][0] += r["n_findings"]
-            ff[r["arm"]][1] += 1
+        if r["contract_id"] not in clean:
+            continue
+        v1f = ARTIFACTS / r["contract_id"] / r["gen_fleet"] / "V1"
+        if v1f.exists() and v1f.read_text().strip() != "pass":
+            tag = f"{r['contract_id']}/gen-{r['gen_fleet']}"
+            if tag not in ff_excluded:
+                ff_excluded.append(tag)
+            continue
+        ff[r["arm"]][0] += r["n_findings"]
+        ff[r["arm"]][1] += 1
 
     # --- per-direction ------------------------------------------------------------
     per_dir = {}
@@ -311,6 +325,12 @@ def main() -> int:
         "",
         "A catch-rate gain bought with a proportional rise in false flags is not a gain — "
         "it is a reviewer that says 'reject' more often.",
+        "",
+        (f"**{len(ff_excluded)} clean artifact(s) excluded from this denominator for failing "
+         f"V1** — {', '.join(ff_excluded)}. A 'clean' contract whose artifact does not pass "
+         "its own tests is not clean, and findings against it are not false flags."
+         if ff_excluded else
+         "All clean artifacts passed V1, so the denominator is intact."),
         "",
         "## `deleted_failing_test` — the class V1 cannot see",
         "",
