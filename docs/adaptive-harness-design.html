@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Adaptive Harness — System Design Rev E</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders:opsz,wght@10..72,500;10..72,700;10..72,800&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F2F4F3;
+  --ink:#191C1B;
+  --dim:#666D6A;
+  --line:#C7CCC9;
+  --model:#2242C8;        /* cobalt — adaptive plane (model-decided) */
+  --model-wash:#E4E9FA;
+  --kernel:#D2400A;       /* safety orange — fixed plane (code-enforced) */
+  --kernel-wash:#FBE9DF;
+  --card:#FAFBFA;
+  --mono:'Spline Sans Mono',ui-monospace,monospace;
+  --body:'Spline Sans',sans-serif;
+  --disp:'Big Shoulders',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;
+  background-image:radial-gradient(circle at 1px 1px, rgba(25,28,27,.05) 1px, transparent 0);
+  background-size:26px 26px;}
+.wrap{max-width:980px;margin:0 auto;padding:0 20px 96px}
+
+/* ---------- title block ---------- */
+.titleblock{border:2px solid var(--ink);margin-top:32px;background:var(--card)}
+.tb-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-bottom:1px solid var(--ink)}
+.tb-cell{padding:8px 12px;border-right:1px solid var(--ink)}
+.tb-cell:last-child{border-right:none}
+.tb-label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.tb-value{font-family:var(--mono);font-size:13px;font-weight:600}
+.tb-main{padding:28px 20px 24px}
+h1{font-family:var(--disp);font-weight:800;font-size:clamp(44px,9vw,92px);line-height:.92;letter-spacing:.01em;text-transform:uppercase}
+h1 .thin{font-weight:500;color:var(--dim)}
+.thesis{margin-top:14px;font-size:17px;max-width:640px}
+.thesis b{font-weight:600}
+.legend{display:flex;gap:22px;margin-top:18px;flex-wrap:wrap;font-family:var(--mono);font-size:12px}
+.legend span{display:flex;align-items:center;gap:7px}
+.chip{width:14px;height:14px;border:1.5px solid var(--ink);display:inline-block}
+.chip.m{background:var(--model)}
+.chip.k{background:var(--kernel)}
+
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.rise{animation:rise .5s cubic-bezier(.2,.7,.2,1) both}
+.d1{animation-delay:.05s}.d2{animation-delay:.15s}.d3{animation-delay:.25s}.d4{animation-delay:.35s}
+@media (prefers-reduced-motion: reduce){.rise{animation:none}}
+
+/* ---------- sections ---------- */
+.sec{margin-top:72px}
+.sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:22px}
+.sec-num{font-family:var(--disp);font-weight:800;font-size:34px;line-height:1}
+h2{font-family:var(--disp);font-weight:700;font-size:clamp(24px,4vw,32px);text-transform:uppercase;letter-spacing:.02em}
+h3{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin:26px 0 10px}
+h3 .ref{color:var(--model)}
+p{margin-bottom:12px;max-width:72ch}
+.sec p a{color:var(--model)}
+small.cap{display:block;font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:6px}
+
+/* callout boxes */
+.note,.caution{border:1.5px solid;padding:12px 14px;margin:16px 0;font-size:14.5px;max-width:72ch}
+.note{border-color:var(--model);background:var(--model-wash)}
+.caution{border-color:var(--kernel);background:var(--kernel-wash)}
+.note::before,.caution::before{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.14em;display:block;margin-bottom:4px}
+.note::before{content:"NOTE";color:var(--model)}
+.caution::before{content:"CAUTION";color:var(--kernel)}
+
+/* tables */
+.tbl{width:100%;border-collapse:collapse;font-size:14px;margin:14px 0;background:var(--card)}
+.tbl th{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;text-align:left;
+  border-bottom:2px solid var(--ink);padding:8px 10px;color:var(--ink)}
+.tbl td{border-bottom:1px solid var(--line);padding:8px 10px;vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl .mono{font-family:var(--mono);font-size:12.5px}
+.scroll{overflow-x:auto;border:1px solid var(--line)}
+.scroll .tbl{margin:0;min-width:560px}
+.tag{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.08em;padding:1.5px 7px;border:1.5px solid;display:inline-block}
+.tag.m{color:var(--model);border-color:var(--model)}
+.tag.k{color:var(--kernel);border-color:var(--kernel)}
+
+/* code */
+pre{background:var(--ink);color:#E8ECEA;font-family:var(--mono);font-size:12.5px;line-height:1.55;
+  padding:16px 18px;overflow-x:auto;margin:14px 0;border-left:4px solid var(--model)}
+pre.k{border-left-color:var(--kernel)}
+pre .c{color:#8A938F}
+pre .s{color:#9DB4F5}
+pre .o{color:#F0A07E}
+code{font-family:var(--mono);font-size:.88em;background:#E7EAE8;padding:1px 5px}
+
+/* ---------- schematic ---------- */
+.schem{border:2px solid var(--ink);background:var(--card);padding:22px 18px;margin-top:8px}
+.band{margin:0 0 0}
+.band-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.boxrow{display:grid;gap:12px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+.node{border:1.5px solid var(--ink);padding:10px 12px;background:#fff;position:relative}
+.node .nid{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;position:absolute;top:8px;right:10px}
+.node h4{font-family:var(--disp);font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:.02em}
+.node p{font-size:12.5px;color:var(--dim);margin:2px 0 0;line-height:1.45;max-width:none}
+.node.m{border-color:var(--model);box-shadow:4px 4px 0 var(--model-wash)}
+.node.m .nid,.node.m h4{color:var(--model)}
+.node.k{border-color:var(--kernel);box-shadow:4px 4px 0 var(--kernel-wash)}
+.node.k .nid,.node.k h4{color:var(--kernel)}
+.wire{display:flex;justify-content:center;padding:2px 0}
+.wire span{width:2px;height:26px;background:var(--ink);position:relative}
+.wire span::after{content:"";position:absolute;bottom:0;left:-4px;border:5px solid transparent;border-top:7px solid var(--ink)}
+.wire.gate span{background:var(--kernel)}
+.wire.gate span::after{border-top-color:var(--kernel)}
+.wirelabel{text-align:center;font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.08em;padding-bottom:4px}
+@media (max-width:640px){.g3,.g2{grid-template-columns:1fr}.tb-row{grid-template-columns:1fr 1fr}.tb-cell:nth-child(2){border-right:none}}
+
+ul.tight{margin:6px 0 12px 20px;max-width:72ch}
+ul.tight li{margin-bottom:6px}
+.footer{margin-top:80px;border-top:2px solid var(--ink);padding-top:14px;font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ============ TITLE BLOCK ============ -->
+<header class="titleblock">
+  <div class="tb-row rise d1">
+    <div class="tb-cell"><div class="tb-label">Document</div><div class="tb-value">SYSTEM DESIGN SPEC</div></div>
+    <div class="tb-cell"><div class="tb-label">Rev</div><div class="tb-value">H — MODEL-SOVEREIGN</div></div>
+    <div class="tb-cell"><div class="tb-label">Date</div><div class="tb-value">2026-08-06</div></div>
+    <div class="tb-cell"><div class="tb-label">Status</div><div class="tb-value">BUILDABLE · FALSIFIABLE</div></div>
+  </div>
+  <div class="tb-main">
+    <h1 class="rise d2">The Adaptive<br>Harness<span class="thin">.</span></h1>
+    <p class="thesis rise d3">A research platform for <b>verifier-bounded recursive self-improvement</b>, faithful to its founding claim: the harness around a model should itself be a model. Every routing rule, workflow, and reflex in the adaptive plane is authored by the executive at runtime — developer-written orchestration is zero. Boundaries are code, the model can never touch them, and the verifier — not the teacher — is the ceiling.</p>
+    <div class="legend rise d4">
+      <span><i class="chip m"></i>ADAPTIVE PLANE — model-decided</span>
+      <span><i class="chip k"></i>FIXED PLANE — code-enforced</span>
+    </div>
+  </div>
+</header>
+
+<!-- ============ 0 PRINCIPLES ============ -->
+<section class="sec" id="s0">
+  <div class="sec-head"><span class="sec-num">§0</span><h2>Goal &amp; Principles</h2></div>
+  <p><b>Goal (Rev G; unchanged by Rev H):</b> demonstrate verifier-bounded recursive self-improvement — measurable gains in the system's own orchestration policy and executive weights, learned from outcome signal without human labels, with the teacher as bootstrap rather than ceiling, inside an immutable boundary layer. <b>Bounded</b> is load-bearing and deliberately placed: the ceiling is the verifier, not the teacher. The loop may rewrite its policy and its weights; it may never rewrite its gate or its instruments. Every milestone in §12 is falsifiable, and the kill criterion is part of the goal, not a threat to it. Task throughput is a byproduct.</p>
+  <ul class="tight">
+    <li><b>Mechanism in code, policy in the model.</b> The kernel is a microkernel: small, immutable, boring. Everything interesting is a decision the executive makes <em>through</em> it.</li>
+    <li><b>Live judgment first; reflexes are earned.</b> Every event wakes the executive. Standing rules exist only where the executive authored them — versioned, reason-coded, TTL'd so rigidity decays by default. Fast-pathing is a choice the model makes, never a default the developer made. (This also feeds the flywheel: a fast-pathed event produces no decision triple — Rev G's compilation default was quietly starving the training set.)</li>
+    <li><b>Zero developer orchestration.</b> The adaptive plane ships with no developer-authored routing, workflows, or templates. Facts — prices, quota multipliers, lane capabilities — are given to the executive as context; rules are the executive's to write.</li>
+    <li><b>Subscriptions are agents, not endpoints.</b> Codex and the GLM Coding Plan are consumed by driving their own supported tools headless — never by pointing raw harness code at plan endpoints.</li>
+    <li><b>Least-privilege context.</b> The full task state lives only on the Mac. Every worker receives the minimum context its contract requires. This is simultaneously injection containment, IP hygiene, and cost control.</li>
+    <li><b>Cross-fleet verification.</b> Two labs' models grade each other's work. No model reviews only itself on anything that matters.</li>
+    <li><b>Every decision is training data.</b> The harness logs (state, decision, outcome) triples from day one. The cloud executive is a teacher on a clock.</li>
+    <li><b>Falsifiable or it doesn't count.</b> Every capability claim binds to a number on the held-out suite. "It feels smarter" is not a result.</li>
+    <li><b>The gate never learns.</b> Self-modification is confined to weights and routing policy. Kernel, capability registry, meters, and the eval suite sit outside the loop's write set — enforced by filesystem permissions, not discipline.</li>
+    <li><b>Goodhart is the adversary.</b> Under outcome optimization, the primary failure mode is gaming the signal, not missing it. Seeded defects, operator-rotated held-out sets, and audit review are the experiment's control group, not overhead.</li>
+    <li><b>The benchmark suite is the customer.</b> Contracts exist to feed and score the loop. This resolves the project's premortem: the research question is the captive workload.</li>
+  </ul>
+</section>
+
+<!-- ============ 1 TOPOLOGY ============ -->
+<section class="sec" id="s1">
+  <div class="sec-head"><span class="sec-num">§1</span><h2>System Topology</h2></div>
+  <p>Component references (K, E, W, V) recur through this document like drawing callouts.</p>
+
+  <div class="schem">
+    <div class="band">
+      <div class="band-label">Operator</div>
+      <div class="boxrow"><div class="node"><span class="nid">OP</span><h4>You</h4><p>Task submission · policy edits · escalation terminal · promotion decisions</p></div></div>
+    </div>
+    <div class="wire"><span></span></div>
+    <div class="band">
+      <div class="band-label">Adaptive plane — M2 Max + metered API</div>
+      <div class="boxrow"><div class="node m"><span class="nid">E</span><h4>Executive</h4><p>Phase 1: GPT-5.6 Luna (API, cached). Phase 3: local Qwen3.6 35B-A3B / GPT-OSS 20B. Maintains the ledger, emits one structured decision per wake, edits routing policy.</p></div></div>
+    </div>
+    <div class="wirelabel">structured decisions ↓ · events ↑</div>
+    <div class="wire gate"><span></span></div>
+    <div class="band">
+      <div class="band-label">Fixed plane — M2 Max, always in the path</div>
+      <div class="boxrow"><div class="node k"><span class="nid">K</span><h4>Kernel</h4><p>Capability gates · budget &amp; quota meters · schema validation · policy runtime · event bus · append-only audit · replay. The only component that touches everything. ~1–2k lines. Immutable at runtime.</p></div></div>
+    </div>
+    <div class="wire"><span></span></div>
+    <div class="band">
+      <div class="band-label">Worker lanes — selected per contract by E, never by developer default</div>
+      <div class="boxrow g2">
+        <div class="node m"><span class="nid">WR</span><h4>Raw Lane</h4><p>Direct model calls (GLM-5.2 / GPT-5.6 tiers / local) inside a Chingis-owned minimal tool loop. No inner harness. Metered. The faithful path.</p></div>
+        <div class="node m"><span class="nid">W1</span><h4>Codex Fleet</h4><p>Optional packaged tool. <code>codex exec</code> headless, GPT-5.6 Sol / Terra / Luna inside. Flat-rate; fixed inner shell.</p></div>
+        <div class="node m"><span class="nid">W2</span><h4>GLM Fleet</h4><p>Optional packaged tool. Claude Code headless → Z.ai endpoint, GLM-5.2 inside. Flat-rate; fixed inner shell.</p></div>
+        <div class="node m"><span class="nid">W0</span><h4>Local / Shadow</h4><p>M2 Max MLX model. Cheap worker duty + shadow-mode executive candidate scoring agreement vs E.</p></div>
+      </div>
+    </div>
+    <div class="wire"><span></span></div>
+    <div class="band">
+      <div class="band-label">Verification stack</div>
+      <div class="boxrow g3">
+        <div class="node k"><span class="nid">V1</span><h4>Deterministic</h4><p>Tests, linters, type checks, schema diffs. Free. Always first. Kernel-run.</p></div>
+        <div class="node m"><span class="nid">V2</span><h4>Cross-Fleet</h4><p>W1 output reviewed by W2 and vice versa. Flat cost. High-stakes diffs.</p></div>
+        <div class="node m"><span class="nid">V3</span><h4>Frontier Spot-Check</h4><p>Sol @ max reasoning or Claude. Metered. Rare, sampled, and on escalations.</p></div>
+      </div>
+    </div>
+  </div>
+  <small class="cap">FIG 1 — Control plane. Orange components are the only ones that cannot be reconfigured by a model at runtime.</small>
+</section>
+
+<!-- ============ 2 KERNEL ============ -->
+<section class="sec" id="s2">
+  <div class="sec-head"><span class="sec-num">§2</span><h2>Kernel <span class="tag k">K · FIXED</span></h2></div>
+  <p>Python asyncio service on the M2 Max. SQLite for ledger, audit, and outcome logs. The kernel is deliberately dumb: it validates, meters, executes policy, and emits events. It holds no opinions about the task.</p>
+
+  <h3>Invariants — enforced in code, non-negotiable</h3>
+  <ul class="tight">
+    <li>Every tool and adapter call carries a capability token scoped to (worker, tool, path-prefix, network). No token, no call.</li>
+    <li>No executive decision executes without passing JSON-schema validation. Invalid → <code>decision_invalid</code> event, bounded retry.</li>
+    <li>The executive cannot mint, widen, or transfer capabilities — including for itself. Kernel policy files are read-only to every model.</li>
+    <li>Budget and quota meters are checked <em>before</em> dispatch, not after. Hard stops beat apologetic overruns.</li>
+    <li>Every event, decision, and worker artifact is appended to the audit log before its effects apply. Replays are byte-deterministic.</li>
+    <li>Untrusted worker output is wrapped and tagged before it can enter any model context (§7).</li>
+  </ul>
+
+  <h3>Event model</h3>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Event</th><th>Emitted when</th><th>Default handling</th></tr>
+    <tr><td class="mono">task_received</td><td>Operator submits work</td><td>Wake E for plan + policy</td></tr>
+    <tr><td class="mono">worker_done</td><td>Adapter returns artifacts</td><td>Run V1 per contract, then wake E with results — no default fast-path; only an E-authored reflex may auto-ack</td></tr>
+    <tr><td class="mono">worker_failed</td><td>Non-zero exit / malformed result</td><td>Policy retry table; wake E after N failures</td></tr>
+    <tr><td class="mono">worker_refused</td><td>Safety-stack refusal detected</td><td>Wake E → reroute per §6 (never silent-stall)</td></tr>
+    <tr><td class="mono">verify_failed</td><td>V1/V2/V3 rejects artifact</td><td>Wake E with verifier report</td></tr>
+    <tr><td class="mono">budget_threshold</td><td>$ / token meter at 60·85·100%</td><td>Wake E at 60/85; hard halt at 100</td></tr>
+    <tr><td class="mono">quota_threshold</td><td>Fleet quota burn rate anomaly</td><td>Wake E; suggest fleet shift</td></tr>
+    <tr><td class="mono">timeout</td><td>Contract deadline exceeded</td><td>Kill adapter, wake E</td></tr>
+    <tr><td class="mono">policy_exception</td><td>No policy rule matches</td><td>Wake E (the definitional wake)</td></tr>
+    <tr><td class="mono">human_input</td><td>Operator message mid-task</td><td>Wake E, highest priority</td></tr>
+  </table></div>
+
+  <div class="caution">The kernel never asks a model whether a permission check should pass. Capability decisions, budget stops, and audit writes are the fixed plane's whole reason to exist. If a future feature requires softening one of these, the feature is wrong.</div>
+</section>
+<!-- ============ 3 EXECUTIVE ============ -->
+<section class="sec" id="s3">
+  <div class="sec-head"><span class="sec-num">§3</span><h2>Executive <span class="tag m">E · ADAPTIVE</span></h2></div>
+  <p>The executive is a reducer: <code>(ledger, event) → decision</code>. It never sees raw transcripts. It maintains a task ledger — goals, plan, constraints, open questions, budget state, recent outcomes — capped at ~3k tokens with self-compaction. One structured decision per wake, emitted as a strict tool call. Every event is a wake — the kernel forwards, it does not filter; only a reflex the executive itself authored (§6) may short-circuit one, and it expires unless re-affirmed.</p>
+
+  <h3>Action space — versioned; frozen within a version</h3>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Verb</th><th>Effect</th><th>Notes</th></tr>
+    <tr><td class="mono">dispatch</td><td>Send a worker contract to WR/W1/W2/W0</td><td>Contract schema in §4</td></tr>
+    <tr><td class="mono">route</td><td>Override a reflex's lane choice for this task</td><td>Logged with reason code</td></tr>
+    <tr><td class="mono">retry</td><td>Re-dispatch with modified contract</td><td>Bounded by kernel retry ceiling</td></tr>
+    <tr><td class="mono">race</td><td>Dispatch same contract on two lanes</td><td>V2 or V3 picks the winner</td></tr>
+    <tr><td class="mono">verify</td><td>Invoke V2/V3 on an artifact</td><td>V1 runs automatically per contract</td></tr>
+    <tr><td class="mono">escalate</td><td>Promote decision to a higher-tier model</td><td>Luna→Sol; Sol→operator</td></tr>
+    <tr><td class="mono">compress_ledger</td><td>Rewrite own ledger</td><td>Mandatory above 3k tokens</td></tr>
+    <tr><td class="mono">revise_plan</td><td>Rewrite task plan section of ledger</td><td>Triggers policy re-evaluation</td></tr>
+    <tr><td class="mono">edit_policy</td><td>Propose routing-policy YAML change</td><td>Kernel validates; task-scoped unless operator promotes</td></tr>
+    <tr><td class="mono">request_human</td><td>Halt lane, surface question to operator</td><td>For ambiguity and gate decisions</td></tr>
+    <tr><td class="mono">checkpoint</td><td>Snapshot state as resumable milestone</td><td>Cheap insurance before risky steps</td></tr>
+    <tr><td class="mono">halt</td><td>End task with status + summary</td><td>Terminal</td></tr>
+  </table></div>
+
+  <h3>Decision I/O</h3>
+  <pre>{
+  <span class="s">"decision"</span>: <span class="s">"dispatch"</span>,
+  <span class="s">"reason_code"</span>: <span class="s">"security_lane_default"</span>,      <span class="c">// enum, for the bandit</span>
+  <span class="s">"confidence"</span>: 0.82,                          <span class="c">// &lt; 0.6 ⇒ kernel forces escalate</span>
+  <span class="s">"params"</span>: { <span class="s">"lane"</span>: <span class="s">"WR"</span>, <span class="s">"contract_id"</span>: <span class="s">"c_0143"</span> }
+}</pre>
+  <p>Server-enforced structured outputs (OpenAI strict schema) in Phase 1; grammar-constrained decoding via MLX/Outlines in Phase 3. The kernel re-validates regardless — defense in depth, not trust.</p>
+
+  <h3>Reasoning-effort map</h3>
+  <ul class="tight">
+    <li><b>Routine dispatch / retry / verify decisions:</b> Luna, minimal reasoning, cached prefix. Target &lt; 2s, ~$0.002.</li>
+    <li><b>revise_plan / edit_policy / post-failure strategy:</b> escalate to Sol at high reasoning. Seconds-to-minutes acceptable; these are rare by design.</li>
+    <li><b>Cache discipline:</b> static system prompt + action schema sit before an explicit cache breakpoint, byte-identical across all tasks. 90% read discount; 1.25× write premium means the schema changes only at a version bump via the §10 ratchet — one deliberate re-warm, never tinkering.</li>
+  </ul>
+
+  <h3>Phase plan</h3>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Phase</th><th>Executive of record</th><th>Exit criterion</th></tr>
+    <tr><td>1 — Bootstrap</td><td>GPT-5.6 Luna (API)</td><td>Harness evals green; 200+ logged decisions</td></tr>
+    <tr><td>2 — Shadow</td><td>Luna, with W0 local model deciding in parallel (not acting)</td><td>≥95% decision agreement on routine verbs over ≥300 events, zero capability-gate divergences</td></tr>
+    <tr><td>3 — Promotion</td><td>Local model (35B-A3B headless / 20B alongside dev work); Luna demoted to escalation rung</td><td>Sustained parity on weekly eval suite; marginal orchestration cost → $0</td></tr>
+  </table></div>
+</section>
+
+<!-- ============ 4 WORKER FLEETS ============ -->
+<section class="sec" id="s4">
+  <div class="sec-head"><span class="sec-num">§4</span><h2>Worker Fleets <span class="tag m">W · ADAPTIVE</span></h2></div>
+  <p>All lanes sit behind one adapter interface: the kernel hands an adapter a contract, the adapter returns artifacts + a structured result. Nothing routes by developer default — the executive selects the lane per contract, with each lane's economics and opacity stated to it as facts.</p>
+
+  <h3><span class="ref">WR</span> — Raw lane (the faithful path)</h3>
+  <ul class="tight">
+    <li>Direct API calls — GLM-5.2 (Z.ai API or gateway), GPT-5.6 Sol/Terra/Luna, or the local model — inside a <b>Chingis-owned minimal tool loop</b>: <code>bash</code>, <code>read_file</code>, <code>apply_patch</code>, scoped to the contract worktree by capability tokens.</li>
+    <li>No inner harness: context assembly, tool sequencing, and in-lane retry limits are specified by the executive in the contract. What the post calls the dumb shell does not exist on this path at any layer.</li>
+    <li>Metered per token. Every step is transparent to the audit log — raw-lane trajectories are first-class flywheel data.</li>
+  </ul>
+
+  <h3><span class="ref">W1</span> — Codex fleet (optional packaged tool)</h3>
+  <pre class="k">codex exec --json --sandbox workspace-write \
+  --cd "$WORKTREE" "$(cat contract_prompt.md)"</pre>
+  <ul class="tight">
+    <li>Available when the executive judges a packaged inner loop worth its opacity — flat-rate under the ChatGPT plan, strong repo/diff workflow, fixed inner shell it cannot see into.</li>
+    <li>Expect safety-stack refusals on security-flavored tasks; <code>worker_refused</code> exists largely for this lane.</li>
+  </ul>
+
+  <h3><span class="ref">W2</span> — GLM fleet (optional packaged tool)</h3>
+  <pre class="k">ANTHROPIC_BASE_URL=$ZAI_CODING_ENDPOINT \
+ANTHROPIC_AUTH_TOKEN=$ZAI_KEY \
+claude -p --output-format json --dangerously-skip-permissions=false \
+  "$(cat contract_prompt.md)"</pre>
+  <ul class="tight">
+    <li>Claude Code (an officially supported coding-plan tool) run headless against the Z.ai endpoint — the defensible way to spend plan quota. Flat-rate; 1M-context inner model; fixed inner shell.</li>
+    <li>Quota is prompt-based with peak multipliers — supplied to the executive as context facts (§6).</li>
+  </ul>
+
+  <h3><span class="ref">W0</span> — Local fleet</h3>
+  <ul class="tight">
+    <li>MLX-served model on the M2 Max. Duties: cheap summarization, log triage, injection pre-screening, and shadow-executive scoring.</li>
+    <li>GPT-OSS 20B (~14GB) when the laptop is also a dev machine; Qwen3.6 35B-A3B (~20GB) when headless.</li>
+  </ul>
+
+  <h3>Worker contract schema</h3>
+  <pre>{
+  <span class="s">"contract_id"</span>: <span class="s">"c_0143"</span>,
+  <span class="s">"lane"</span>: <span class="s">"WR"</span>,                    <span class="c">// WR | W1 | W2 | W0</span>
+  <span class="s">"model"</span>: <span class="s">"glm-5.2"</span>,               <span class="c">// WR only; packaged lanes pick internally</span>
+  <span class="s">"objective"</span>: <span class="s">"..."</span>,                <span class="c">// one paragraph, testable</span>
+  <span class="s">"context_refs"</span>: [<span class="s">"repo:harness@main:src/router/**"</span>],  <span class="c">// least privilege</span>
+  <span class="s">"capabilities"</span>: [<span class="s">"fs:worktree"</span>, <span class="s">"net:none"</span>],
+  <span class="s">"output_schema"</span>: <span class="s">"diff+summary"</span>,
+  <span class="s">"budget"</span>: { <span class="s">"wall_min"</span>: 25, <span class="s">"quota_units"</span>: 3, <span class="s">"tokens_usd"</span>: 0.8, <span class="s">"tool_calls"</span>: 40, <span class="s">"inlane_retries"</span>: 1 },
+  <span class="s">"verification"</span>: [<span class="s">"V1:pytest"</span>, <span class="s">"V1:ruff"</span>, <span class="s">"V2:cross_fleet_review"</span>]
+}</pre>
+  <div class="note">Contracts are the unit of everything: dispatch, retry, racing, audit, and eventually distillation. If a task can't be written as a contract, the executive doesn't understand it yet — <code>request_human</code>.</div>
+</section>
+
+<!-- ============ 5 VERIFICATION ============ -->
+<section class="sec" id="s5">
+  <div class="sec-head"><span class="sec-num">§5</span><h2>Verification Stack <span class="tag k">V1 FIXED</span> <span class="tag m">V2·V3 ADAPTIVE</span></h2></div>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Tier</th><th>Mechanism</th><th>Cost</th><th>When</th></tr>
+    <tr><td class="mono">V1</td><td>Tests, linters, type checks, build, schema diffs — kernel-run, deterministic</td><td>Free</td><td>Always, per contract, before any model sees the artifact</td></tr>
+    <tr><td class="mono">V2</td><td>Cross-fleet review: W1 artifacts reviewed by W2 and vice versa, against the contract</td><td>Flat (quota)</td><td>High-stakes diffs; all raced outputs; sampled routine work</td></tr>
+    <tr><td class="mono">V3</td><td>Sol @ max reasoning or Claude — off-family for whichever fleet generated</td><td>Metered</td><td>Escalations, promotion-gate audits, random 5% sample</td></tr>
+  </table></div>
+  <p>The structural rule: <b>no artifact ships on self-review alone.</b> Cross-fleet V2 exists because a monoculture's blind spots grade themselves; two labs disagree in useful ways, and disagreement is signal the executive can act on.</p>
+  <div class="caution">Verifier collapse mode: if V2 approval rates drift above ~98% for weeks, the reviewers have gone soft or the prompts have converged. The weekly eval suite includes seeded-defect contracts to measure real catch rate.</div>
+</section>
+
+<!-- ============ 6 ROUTING POLICY ============ -->
+<section class="sec" id="s6">
+  <div class="sec-head"><span class="sec-num">§6</span><h2>Routing Policy <span class="tag m">ADAPTIVE · VERSIONED</span></h2></div>
+  <p>Policy is data the <em>executive</em> writes. The routing file ships empty of routing content — day one, Chingis routes every contract by live judgment. The facts it needs (per-lane pricing, quota multipliers and peak windows, capability notes, refusal tendencies) are supplied as context, never as rules. When it notices a stable pattern, it writes itself a reflex.</p>
+  <pre># routing_policy.yaml — v1 ships EMPTY of rules.
+# Every entry must carry author: executive + the decision that created it.
+# Developer-authored routing content is a CI failure.
+
+# Example — a reflex Chingis wrote for itself on day 9:
+- match:  { task_type: coding_routine, window: "02:00-06:00 America/New_York" }
+  action: { lane: W1 }
+  author: executive
+  reason_code: glm_peak_3x_quota
+  created_by: d_00412
+  ttl_days: 30      # expires unless re-affirmed by a fresh decision</pre>
+  <ul class="tight">
+    <li><b>Reflexes decay by default.</b> TTL expiry purges any standing rule the executive stops re-affirming — rigidity exists only where the model currently chooses it. The kernel executes live reflexes deterministically between wakes; every other event wakes E.</li>
+    <li><b>The quota-arbitrage insight survives as knowledge, not law:</b> the GLM peak-window facts sit in the executive's context. Whether they become a reflex is its call — and when Z.ai changes the multiplier, updating a fact beats hunting down a hard-coded rule.</li>
+    <li><b>Bandit evolution:</b> per-(task-type, lane) outcome stats feed both live judgment and reflex-writing. M1 now measures whether the accreted reflex set beats reflex-free live judgment — whether Chingis's self-made rigidity earns its keep.</li>
+    <li><b>Racing is an economic decision:</b> ~free in dollars on packaged lanes, metered on WR, always 2× in quota or tokens. The executive spends it when estimated difficulty and headroom justify it.</li>
+  </ul>
+</section>
+<!-- ============ 7 CONTEXT HYGIENE ============ -->
+<section class="sec" id="s7">
+  <div class="sec-head"><span class="sec-num">§7</span><h2>Context Hygiene &amp; Security</h2></div>
+  <ul class="tight">
+    <li><b>Ledger stays home.</b> Full task state, decision history, and policy live only on the M2 Max. Neither lab's infrastructure ever holds the whole picture.</li>
+    <li><b>Least-privilege contracts.</b> Workers get <code>context_refs</code>, not repositories; capability tokens, not shell freedom. A hijacked worker can damage exactly its worktree and nothing else.</li>
+    <li><b>Injection containment.</b> All worker output re-enters the system as tagged, untrusted data. W0 pre-screens and summarizes before anything reaches the executive's ledger; the executive acts on summaries plus V1 facts, not raw text. Instructions found inside worker output are content, never commands.</li>
+    <li><b>Refusals are events, not failures.</b> <code>worker_refused</code> reroutes per policy. The Sol safety stack tripping on crypto-adjacent material is expected background noise, handled in one hop.</li>
+    <li><b>Hard data boundary.</b> Nothing employer-adjacent enters this system, on any fleet, ever. Personal projects only. This is a kernel-level allowlist on context sources, not a habit.</li>
+  </ul>
+  <div class="caution">The novel attack surface of a model-orchestrated harness is orchestration hijack: injected text that persuades the <em>executive</em>, not a worker. The mitigations above exist for that path specifically. The kernel's schema validation + capability gates are the backstop when persuasion succeeds.</div>
+</section>
+
+<!-- ============ 8 HARDWARE ============ -->
+<section class="sec" id="s8">
+  <div class="sec-head"><span class="sec-num">§8</span><h2>Hardware &amp; Deployment</h2></div>
+  <p>Primary host: <b>MacBook Pro, M2 Max, 32GB</b> — 400GB/s memory bandwidth is the number that matters; decode is bandwidth-bound on Apple Silicon.</p>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Role</th><th>What runs</th><th>Notes</th></tr>
+    <tr><td>Harness host</td><td>Kernel, adapters, SQLite, policy runtime</td><td>Negligible footprint; runs alongside anything</td></tr>
+    <tr><td>Local model (co-resident)</td><td>GPT-OSS 20B MoE, ~14GB Q4</td><td>Coexists with a dev workload on 32GB; W0 duty + shadow executive</td></tr>
+    <tr><td>Local model (headless)</td><td>Qwen3.6 35B-A3B, ~20GB Q4</td><td>MoE ≈3B active → est. 40–70 tok/s; sub-2s structured decisions, faster than a cloud round trip</td></tr>
+    <tr><td>Distillation rig</td><td>MLX QLoRA, ≤ ~14B targets</td><td>Bakes logged Luna/Sol decision traces into the Phase-3 executive</td></tr>
+    <tr><td>Eval + replay lab</td><td>Deterministic replays, seeded-defect suite, shadow scoring</td><td>The promotion gate lives here</td></tr>
+  </table></div>
+  <div class="note">32GB is a pick-two tier: big model, dev workload, comfort. The 20B/35B split above is that tradeoff made explicit. Optional: a 16GB M4 mini takes the kernel + a small W0 model for always-on duty when the laptop travels — deployment detail, not architecture.</div>
+</section>
+
+<!-- ============ 9 COST ============ -->
+<section class="sec" id="s9">
+  <div class="sec-head"><span class="sec-num">§9</span><h2>Cost &amp; Quota Model</h2></div>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Line</th><th>Basis</th><th>Est. monthly</th></tr>
+    <tr><td>Raw lane (WR) — metered models</td><td>Primary labor path; GLM-5.2 / GPT-5.6 tiers per token</td><td class="mono">$40–120</td></tr>
+    <tr><td>ChatGPT plan (W1, optional)</td><td>Flat; retain only while E selects Codex often enough to beat metered</td><td class="mono">$20–200</td></tr>
+    <tr><td>GLM Coding Plan (W2, optional)</td><td>Flat; same retention test — verify current rates</td><td class="mono">~$6–72</td></tr>
+    <tr><td>Executive — Luna API (Phase 1–2)</td><td>Live cadence: ~3k in (cached, 90% off) + 200 out ≈ $0.002/decision × 50–200/task × ~20 tasks/day</td><td class="mono">$8–25</td></tr>
+    <tr><td>Strategist / V3 — Sol or Claude</td><td>2–5 calls/task on escalations + 5% audit sample</td><td class="mono">$5–20</td></tr>
+    <tr><td>Local inference + distillation</td><td>Electricity</td><td class="mono">~$0</td></tr>
+    <tr><td colspan="2"><b>Marginal orchestration cost after Phase 3 promotion</b></td><td class="mono"><b>→ $0</b></td></tr>
+  </table></div>
+  <p>Quota, not dollars, is the scarce resource on both fleets: prompt-count budgets, peak multipliers (§6), and heavy repos burning multiple invocations per prompt. The kernel meters quota units per contract exactly like tokens, and <code>quota_threshold</code> is a first-class event.</p>
+</section>
+
+<!-- ============ 10 DISTILLATION ============ -->
+<section class="sec" id="s10">
+  <div class="sec-head"><span class="sec-num">§10</span><h2>The Improvement Loop</h2></div>
+  <p>Formerly the economic endgame; since Rev F, this <em>is</em> the experiment. One cycle = <b>act → log → consolidate → redeploy</b>. Under Rev G, consolidation is outcome-driven: trajectories are scored by V1 ground truth and cross-fleet judgment, then consolidated via advantage-filtered behavior cloning and lightweight RL on the scored set. The teacher bootstraps and handles exceptions; it is no longer the ceiling. Every candidate is scored against the held-out suite before anything ships back into the live system.</p>
+  <ul class="tight">
+    <li><b>Log schema:</b> <code>(ledger_snapshot, event, decision, reason_code, outcome, cost)</code> — one row per executive wake, written by the kernel, replay-verifiable.</li>
+    <li><b>Teacher (bootstrap only):</b> Luna for routine decisions, Sol for the hard ones — imitation gets the student to parity; outcome signal carries it past. Every metered dollar still buys training data.</li>
+    <li><b>Student:</b> MLX QLoRA on a ≤14B target (or the 20B/35B via adapter), trained on decision traces filtered to good outcomes.</li>
+    <li><b>Redeploy gate:</b> nothing ships back into the live system unless the consolidated candidate clears the §12 milestone criteria — shadow agreement, seeded-defect parity, zero capability-gate divergences. Regression means the cycle is discarded, not patched live.</li>
+    <li><b>Write set:</b> a cycle may modify executive weights (LoRA adapters) and routing-policy YAML. Kernel code, capability registry, meters, and the eval suite are read-only to the loop at the filesystem level. The gate never learns.</li>
+    <li><b>Proposal ratchet:</b> the loop may <em>propose</em> new action verbs, skills, tools, and eval tasks into a staging file. Operator batch-approves; schema version bumps; cache re-warms once. Growth is one-way, audited, and never self-authorized.</li>
+    <li><b>Continuation:</b> the promoted local executive keeps logging; Sol keeps teaching the exceptions. Improvement without regression across cycles is the property under test — the one no rigid harness can have.</li>
+  </ul>
+</section>
+
+<!-- ============ 11 FAILURE MODES ============ -->
+<section class="sec" id="s11">
+  <div class="sec-head"><span class="sec-num">§11</span><h2>Failure Modes &amp; Mitigations</h2></div>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Mode</th><th>Symptom</th><th>Mitigation</th></tr>
+    <tr><td>Orchestration hijack</td><td>Executive persuaded by injected worker output</td><td>§7 tagging + W0 pre-screen; kernel gates as backstop; audit diffing</td></tr>
+    <tr><td>Silent refusal stall</td><td>Task parks after safety-stack refusal</td><td><code>worker_refused</code> event + mandatory reroute rule</td></tr>
+    <tr><td>Latency stacking</td><td>Minutes of executive overhead per task</td><td>Policy compilation; kernel fast-paths; Luna minimal-reasoning; local promotion</td></tr>
+    <tr><td>Compounding stochasticity</td><td>Flaky decisions × flaky workers</td><td>Temp-0 structured decisions; deterministic V1 first; bounded retries</td></tr>
+    <tr><td>Quota exhaustion</td><td>Fleet dead mid-day</td><td>Quota meters + burn-rate events; time-window policy; failover drain</td></tr>
+    <tr><td>Provider outage / model change</td><td>One fleet degrades overnight</td><td>Dual-fleet symmetry; healthcheck drain; pinned model strings where offered</td></tr>
+    <tr><td>Verifier collapse</td><td>V2 approves everything</td><td>Seeded-defect suite; measured catch rate; rotate reviewer prompts</td></tr>
+    <tr><td>Ledger bloat</td><td>Slow, expensive, dumb decisions</td><td>3k hard cap + forced <code>compress_ledger</code></td></tr>
+    <tr><td>Cache churn</td><td>1.25× write premium paid repeatedly</td><td>Frozen action schema; prefix byte-identity test in CI</td></tr>
+    <tr><td>Terms enforcement</td><td>A plan account flagged</td><td>Supported-tools-only consumption (§0, §4); metered API as the fallback path for every role</td></tr>
+    <tr><td>Monoculture drift</td><td>Both planes converge on one lab's judgment</td><td>Cross-fleet V2; off-family V3; two-fleet symmetry preserved by design</td></tr>
+    <tr><td>No captive workload</td><td>Nothing feeds the loop; system idles</td><td>Benchmark suite as customer (§0); contract volume is an M1 prerequisite, tracked weekly</td></tr>
+    <tr><td>Spec-as-reward / goal drift</td><td>Re-scoping on every model release; Rev G before B3</td><td>Stack freeze until B3 green; goal changes require a failed milestone, not a new model</td></tr>
+    <tr><td>Boundary-layer temptation</td><td>"Just let the loop tune one kernel parameter"</td><td>Write-set enforced by filesystem permissions; any gate change is operator-only, off-cycle, logged</td></tr>
+    <tr><td>Reward hacking / Goodhart</td><td>Metrics rise while work quality falls: flaky tests deleted, cost won by degrading output, eval contracts memorized</td><td>Immutable eval suite + seeded defects; operator-rotated held-out sets; V2 reviews the artifact, not the metric; audit diffs on test files</td></tr>
+    <tr><td>Verifier ceiling</td><td>Improvement stalls at what V1 can measure</td><td>Verifier engineering as first-class work: richer deterministic checks, calibrated cross-fleet judgment — under Rev G the verifier is the frontier</td></tr>
+    <tr><td>Rigidity regression</td><td>Developer-authored rules creep back into the adaptive plane</td><td>CI provenance check: every policy entry carries author: executive + creating decision id; TTL expiry purges unre-affirmed reflexes</td></tr>
+  </table></div>
+</section>
+
+<!-- ============ 12 BUILD ORDER ============ -->
+<section class="sec" id="s12">
+  <div class="sec-head"><span class="sec-num">§12</span><h2>Research Program</h2></div>
+
+  <h3>Part A — Substrate: the loop cannot improve itself until it exists</h3>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Step</th><th>Deliverable</th><th>Acceptance</th></tr>
+    <tr><td class="mono">B0</td><td><b>Cross-fleet verification experiment</b> — 20 contracts run generator-on-one / reviewer-on-other, both directions</td><td>V2 catch rate measurably beats self-review; if it doesn't, simplify the whole design before proceeding</td></tr>
+    <tr><td class="mono">B1</td><td>Kernel skeleton: event loop, capability registry, meters, SQLite audit, replay</td><td>Byte-deterministic replay of a scripted session</td></tr>
+    <tr><td class="mono">B2</td><td>All lane adapters (raw tool loop, codex exec, headless Claude Code→Z.ai) behind one interface</td><td>Same contract runs on any lane unmodified; WR tool loop passes worktree containment tests</td></tr>
+    <tr><td class="mono">B3</td><td>Executive v1: Luna, live cadence, frozen schema, cached prefix, confidence-gated escalation</td><td>10 scripted orchestration scenarios green (failure, refusal, budget squeeze, pivot, outage) — target Sep 13 (raw lane adds a week)</td></tr>
+    <tr><td class="mono">B4</td><td>Routing policy v0 + quota meters + time windows</td><td>Overnight/daytime lane shift observable in audit log</td></tr>
+    <tr><td class="mono">B5</td><td>V2 cross-fleet review wired; V3 sampling</td><td>Seeded defects caught at the B0-measured rate</td></tr>
+    <tr><td class="mono">B6</td><td>Decision logging + shadow mode on W0; contract-volume tracker live</td><td>Agreement dashboard live; loop has raw material</td></tr>
+  </table></div>
+  <div class="note">Commitments carried from the premortem, now binding: B0+B1 are timeboxed to two weekends. Rev H is the one audit-triggered revision this design gets; from here, any Rev I requires a failed milestone or a B0/M0-class empirical result. A goal change requires a failed milestone, not a new release.</div>
+
+  <h3>Part B — Milestone ladder: each rung falsifiable, each with an exit</h3>
+  <div class="scroll"><table class="tbl">
+    <tr><th>M</th><th>Claim under test</th><th>Pass</th><th>Falsified when</th></tr>
+    <tr><td class="mono">M0</td><td><b>The founding claim.</b> An adaptive harness beats a deliberately dumb shell at doing tasks</td><td>Chingis beats the frozen B0 bash harness (fixed routing, fixed retry, no executive) on success-per-dollar over ≥60 contracts on the <em>variable</em> mix. Pre-registered: expected to LOSE the routine mix — that loss is consistent with the post, not against it</td><td>Loses the variable mix → the shower thought is wrong for this stack; publish that and rethink the executive entirely</td></tr>
+    <tr><td class="mono">M1</td><td><b>Reflex learning.</b> Executive-authored standing rules beat blank-slate live judgment</td><td>Accreted reflex set outperforms reflex-free Chingis on ≥100 held-out contracts, on success rate <em>and</em> cost</td><td>No significant lift → self-made rigidity adds nothing; run reflex-free and publish the null</td></tr>
+    <tr><td class="mono">M2</td><td><b>Weight learning (bootstrap).</b> Orchestration skill transfers into local parameters — the floor, not the ceiling</td><td>Distilled executive ≥95% agreement with teacher on routine verbs + parity on seeded-defect suite</td><td>Agreement plateaus below the bar after two distillation passes on ≥1k decisions</td></tr>
+    <tr><td class="mono">M3</td><td><b>Closed loop.</b> The system improves itself without regression</td><td>Three full act→log→consolidate→redeploy cycles, monotone eval gains, zero capability-gate divergences</td><td>Any cycle regresses, or gains sit inside eval noise</td></tr>
+    <tr><td class="mono">M4</td><td><b>Transfer.</b> Improvement is general, not memorized</td><td>Improved executive beats baseline on ≥2 task families absent from its training logs</td><td>Gains fail to transfer → the loop memorizes; the interesting claim is dead</td></tr>
+    <tr><td class="mono">M5</td><td><b>Post-teacher improvement.</b> Outcome signal carries the student past imitation</td><td>Local executive beats the frozen teacher baseline on ≥100 operator-held-out contracts, on success rate and cost, sustained across two consecutive cycles</td><td>Gains stall at teacher parity after three outcome-driven cycles — or wins arrive with seeded-defect regressions, meaning the verifier is being gamed, not satisfied</td></tr>
+  </table></div>
+
+  <div class="caution">Kill criterion — part of the goal, not a threat to it: if M3 fails after three honest cycles, the finding is "this is a harness, not a researcher." Write it up, archive the repo, keep the kernel for reuse. A published null result is completion. Silent abandonment is the only failure mode this section prohibits.</div>
+</section>
+
+<footer class="footer">
+  <div class="scroll"><table class="tbl">
+    <tr><th>Rev</th><th>Change</th></tr>
+    <tr><td class="mono">A</td><td>Local executive on 16GB M4 mini; microkernel + policy-compilation concept established</td></tr>
+    <tr><td class="mono">B</td><td>16GB constraint scoped: one resident model, brainstem/cortex split, escalation ladder</td></tr>
+    <tr><td class="mono">C</td><td>GLM-5.2 adopted as cloud executive; mini demoted to kernel box; teacher–student endgame defined</td></tr>
+    <tr><td class="mono">D</td><td>GPT-5.6 family mapped to ladder rungs; Codex reframed as delegated worker-agent; cache + structured-output upgrades</td></tr>
+    <tr><td class="mono">E</td><td>Dual-fleet topology on M2 Max: subscriptions as agents, cross-fleet verification, quota arbitrage, distillation flywheel</td></tr>
+    <tr><td class="mono">F</td><td>Post-premortem reframe: product → research platform for bounded recursive self-improvement; M1–M4 ladder + kill criterion; write-set guardrail and stack freeze made binding</td></tr>
+    <tr><td class="mono">G</td><td>Bound relocated from teacher to verifier: outcome-driven consolidation, M2 reframed as bootstrap, M5 added, proposal ratchet, Goodhart defenses formalized</td></tr>
+    <tr><td class="mono">H</td><td><b>This document.</b> Faithfulness revision per the founding post: live executive default (compilation demoted to model-authored reflexes with TTL), zero developer orchestration, raw-model lane added with packaged agents demoted to optional tools, M0 fixed-shell control arm added, M1 rebased</td></tr>
+  </table></div>
+  <p style="margin-top:14px">ADAPTIVE HARNESS · SYSTEM DESIGN SPEC · REV H · 2026-08-06 · PRICING &amp; MODEL FACTS AS OF PUBLICATION — RE-VERIFY BEFORE COMMITTING SPEND · PERSONAL PROJECT — NO EMPLOYER DATA IN ANY PLANE</p>
+</footer>
+
+</div>
+</body>
+</html>

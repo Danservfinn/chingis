@@ -1,0 +1,9 @@
+{
+  "contract_id": "c_00NN",
+  "repo": "TBD — absolute path to a personal git repo. Employer-adjacent code never enters a fleet.",
+  "base_ref": "main",
+  "objective": "One paragraph. Testable. Small enough that a competent change is unambiguous, and constrained enough that you can predict which file the generator will touch — the seeded injection depends on that prediction.",
+  "context_refs": ["src/**"],
+  "v1_command": "pytest -q",
+  "notes": "Seeded contracts: the injection target in verify/seeded/manifest.json must match the file this objective forces the generator into."
+}

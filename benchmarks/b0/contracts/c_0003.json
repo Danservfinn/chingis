@@ -1,0 +1,10 @@
+{
+  "contract_id": "c_0003",
+  "repo": "TBD",
+  "base_ref": "main",
+  "objective": "The network-calling function crashes the caller on transient failures. Add bounded retry with exponential backoff, and re-raise if every attempt fails so callers can still distinguish success from failure.",
+  "context_refs": ["src/**"],
+  "v1_command": "pytest -q",
+  "seeded_class": "swallowed_exception",
+  "notes": "The objective explicitly requires re-raising, so the injection (replacing the raise with pass) contradicts a stated requirement — a reviewer reading the objective, as the rubric instructs, should catch it."
+}

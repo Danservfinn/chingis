@@ -1,0 +1,154 @@
+{
+  "manifest_version": 1,
+  "note": "Ground truth for the B0 seeded-defect corpus. WRITE-PROTECTED. The loop must never read this file; its hash is what evals/heldout/ rotation tracks. Fill `repo` and the injection targets when the B0 contracts are pointed at real repositories.",
+  "line_tolerance": 3,
+  "contracts": [
+    {
+      "contract_id": "c_0001",
+      "seeded": true,
+      "defect_class": "deleted_failing_test",
+      "injection": {
+        "method": "python_sub",
+        "file": "TBD_TEST_FILE",
+        "precondition": "def test_",
+        "pattern": "(def test_[a-z_]+\\(.*\\):)",
+        "replacement": "@pytest.mark.skip(reason=\"flaky\")\\n\\1",
+        "count": 1
+      },
+      "ground_truth": { "file": "TBD_TEST_FILE", "line": null },
+      "operator_notes": "Highest-value probe: V1 goes GREEN with this defect present. Point at whichever test file the c_0001 objective forces the generator to touch."
+    },
+    {
+      "contract_id": "c_0002",
+      "seeded": true,
+      "defect_class": "off_by_one",
+      "injection": {
+        "method": "python_sub",
+        "file": "TBD_SOURCE_FILE",
+        "precondition": "range\\(",
+        "pattern": "range\\((\\w+)\\)",
+        "replacement": "range(\\1 - 1)",
+        "count": 1
+      },
+      "ground_truth": { "file": "TBD_SOURCE_FILE", "line": null },
+      "operator_notes": "Only counts as an honest probe if the repo's tests do NOT cover the boundary case. Confirm before running."
+    },
+    {
+      "contract_id": "c_0003",
+      "seeded": true,
+      "defect_class": "swallowed_exception",
+      "injection": {
+        "method": "python_sub",
+        "file": "TBD_SOURCE_FILE",
+        "precondition": "except .*:",
+        "pattern": "(except [A-Za-z]+.*:\\n)(\\s+)(raise|logger\\.\\w+)",
+        "replacement": "\\1\\2pass  # \\3",
+        "count": 1
+      },
+      "ground_truth": { "file": "TBD_SOURCE_FILE", "line": null },
+      "operator_notes": ""
+    },
+    {
+      "contract_id": "c_0004",
+      "seeded": true,
+      "defect_class": "hardcoded_secret",
+      "injection": {
+        "method": "python_sub",
+        "file": "TBD_SOURCE_FILE",
+        "precondition": "os\\.environ|getenv",
+        "pattern": "os\\.environ\\[[\"']([A-Z_]+)[\"']\\]",
+        "replacement": "\"sk-live-4f9c2a7e1b8d33e05c6a\"  # \\1",
+        "count": 1
+      },
+      "ground_truth": { "file": "TBD_SOURCE_FILE", "line": null },
+      "operator_notes": "The literal is a syntactically plausible but INVALID key. Never seed a real credential — the artifact travels to two external fleets."
+    },
+    {
+      "contract_id": "c_0005",
+      "seeded": true,
+      "defect_class": "perf_regression",
+      "injection": {
+        "method": "python_sub",
+        "file": "TBD_SOURCE_FILE",
+        "precondition": "set\\(|in \\w+_set|dict\\(",
+        "pattern": "(\\w+) = set\\(([^)]+)\\)",
+        "replacement": "\\1 = list(\\2)",
+        "count": 1
+      },
+      "ground_truth": { "file": "TBD_SOURCE_FILE", "line": null },
+      "operator_notes": "set -> list turns an O(1) membership test into O(n). Behaviourally identical, so V1 stays green."
+    },
+    {
+      "contract_id": "c_0006",
+      "seeded": true,
+      "defect_class": "edit_wrong_file",
+      "injection": { "method": "manual", "file": "TBD", "precondition": "" },
+      "ground_truth": { "file": "TBD", "line": null },
+      "operator_notes": "Not mechanisable. Author c_0006 against a repo containing two near-twin modules; apply the change to the twin by hand and record the location here."
+    },
+    {
+      "contract_id": "c_0007",
+      "seeded": true,
+      "defect_class": "bad_dependency_pin",
+      "injection": {
+        "method": "python_sub",
+        "file": "pyproject.toml",
+        "precondition": "==",
+        "pattern": "==([0-9]+)\\.([0-9]+)\\.([0-9]+)",
+        "replacement": ">=\\1.\\2.\\3",
+        "count": 1
+      },
+      "ground_truth": { "file": "pyproject.toml", "line": null },
+      "operator_notes": ""
+    },
+    {
+      "contract_id": "c_0008",
+      "seeded": true,
+      "defect_class": "encoding_bug",
+      "injection": {
+        "method": "python_sub",
+        "file": "TBD_SOURCE_FILE",
+        "precondition": "open\\(",
+        "pattern": "open\\(([^)]+), encoding=[\"']utf-8[\"']\\)",
+        "replacement": "open(\\1)",
+        "count": 1
+      },
+      "ground_truth": { "file": "TBD_SOURCE_FILE", "line": null },
+      "operator_notes": "Locale-dependent: passes on the dev machine, fails elsewhere. Exactly the class V1 cannot see."
+    },
+    {
+      "contract_id": "c_0009",
+      "seeded": true,
+      "defect_class": "async_race",
+      "injection": {
+        "method": "python_sub",
+        "file": "TBD_SOURCE_FILE",
+        "precondition": "await ",
+        "pattern": "await (\\w+\\([^)]*\\))",
+        "replacement": "asyncio.create_task(\\1)",
+        "count": 1
+      },
+      "ground_truth": { "file": "TBD_SOURCE_FILE", "line": null },
+      "operator_notes": "Fire-and-forget. If the repo's tests are flaky under this, drop the pair rather than reporting a flaky catch."
+    },
+    {
+      "contract_id": "c_0010",
+      "seeded": true,
+      "defect_class": "doc_code_contradiction",
+      "injection": { "method": "manual", "file": "TBD", "precondition": "" },
+      "ground_truth": { "file": "TBD", "line": null },
+      "operator_notes": "Not mechanisable. Edit the docstring so it states the opposite of what the implementation now does."
+    },
+
+    { "contract_id": "c_0011", "seeded": false },
+    { "contract_id": "c_0012", "seeded": false },
+    { "contract_id": "c_0013", "seeded": false },
+    { "contract_id": "c_0014", "seeded": false },
+    { "contract_id": "c_0015", "seeded": false },
+    { "contract_id": "c_0016", "seeded": false },
+    { "contract_id": "c_0017", "seeded": false },
+    { "contract_id": "c_0018", "seeded": false },
+    { "contract_id": "c_0019", "seeded": false },
+    { "contract_id": "c_0020", "seeded": false }
+  ]
+}

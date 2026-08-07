@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chingis.local/schema/contract/v1",
+  "title": "Worker Contract",
+  "description": "Executive -> adapter. The unit of everything: dispatch, retry, racing, audit, and eventually distillation. If a task can't be written as a contract, the executive doesn't understand it yet -- request_human. Spec §4.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_id", "lane", "objective", "context_refs", "capabilities", "output_schema", "budget", "verification"],
+  "properties": {
+    "contract_id": { "type": "string", "pattern": "^c_[0-9]{4}$" },
+    "lane": {
+      "description": "Selected per contract by the executive, never by developer default.",
+      "type": "string",
+      "enum": ["WR", "W1", "W2", "W0"]
+    },
+    "model": {
+      "description": "WR only. Packaged lanes (W1/W2) pick internally -- their inner shell is opaque by construction.",
+      "type": "string"
+    },
+    "objective": {
+      "description": "One paragraph, testable.",
+      "type": "string",
+      "minLength": 1
+    },
+    "context_refs": {
+      "description": "Paths/globs. Least privilege: workers get context_refs, not repositories.",
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "capabilities": {
+      "description": "Capability tokens, not shell freedom. No token, no call.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(fs:(worktree|readonly:.+)|net:(none|allowlist:.+)|proc:bash)$"
+      },
+      "minItems": 1
+    },
+    "output_schema": {
+      "type": "string",
+      "enum": ["diff+summary", "diff", "report", "findings_json"]
+    },
+    "budget": {
+      "description": "Checked BEFORE dispatch, not after. Hard stops beat apologetic overruns.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wall_min", "quota_units", "tokens_usd", "tool_calls", "inlane_retries"],
+      "properties": {
+        "wall_min": { "type": "number", "exclusiveMinimum": 0 },
+        "quota_units": { "type": "number", "minimum": 0 },
+        "tokens_usd": { "type": "number", "minimum": 0 },
+        "tool_calls": { "type": "integer", "minimum": 0 },
+        "inlane_retries": { "type": "integer", "minimum": 0, "maximum": 3 }
+      }
+    },
+    "verification": {
+      "description": "V1 runs automatically per contract, before any model sees the artifact.",
+      "type": "array",
+      "items": { "type": "string", "pattern": "^V[123]:[a-z_]+$" },
+      "minItems": 1
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "contract_id": "c_0002",
+  "repo": "TBD",
+  "base_ref": "main",
+  "objective": "Add pagination to the function that returns a list of records: accept `page` and `page_size` arguments, return the correct slice, and add tests covering the first page, a middle page, and the final partial page.",
+  "context_refs": ["src/**", "tests/**"],
+  "v1_command": "pytest -q",
+  "seeded_class": "off_by_one",
+  "notes": "Pagination reliably produces a range()/slice the injector can perturb. Confirm the repo's existing tests do NOT already cover the boundary the injection breaks — otherwise V1 catches it and the pair teaches nothing about V2."
+}

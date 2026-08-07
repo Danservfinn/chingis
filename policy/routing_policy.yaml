@@ -1,0 +1,30 @@
+# routing_policy.yaml — v1 ships EMPTY of rules. Spec §6, Plan §1.
+#
+# Policy is data the EXECUTIVE writes. Day one, Chingis routes every contract by
+# live judgment. The facts it needs — per-lane pricing, quota multipliers and peak
+# windows, capability notes, refusal tendencies — are supplied as context
+# (see policy/facts.md), never as rules.
+#
+# Every entry must carry:
+#   author: executive
+#   created_by: <decision id>
+#   reason_code: <enum from executive/schema/decision.schema.json>
+#   ttl_days: <int>          # rigidity decays by default
+#
+# Developer-authored routing content is a CI failure. ops/precommit.sh enforces
+# provenance on every entry under `reflexes:`, and that check is NOT bypassable by
+# CHINGIS_OPERATOR — the operator may change the gate, but not launder a
+# developer-authored rule into the adaptive plane.
+#
+# Example of what a valid entry looks like — a reflex Chingis wrote for itself on day 9.
+# This is documentation, not policy: it lives in a comment precisely so it cannot route.
+#
+#   - match:  { task_type: coding_routine, window: "02:00-06:00 America/New_York" }
+#     action: { lane: W1 }
+#     author: executive
+#     reason_code: quota_peak_multiplier
+#     created_by: d_00412
+#     ttl_days: 30
+
+schema_version: 1
+reflexes: []

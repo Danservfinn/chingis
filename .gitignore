@@ -1,0 +1,23 @@
+.env
+chingis.db
+chingis.db-wal
+chingis.db-shm
+__pycache__/
+*.pyc
+.venv/
+.uv/
+
+# B0 run outputs — regenerable, and may contain worker text.
+benchmarks/b0/artifacts/**
+benchmarks/b0/results/**
+!benchmarks/b0/artifacts/.gitkeep
+!benchmarks/b0/results/.gitkeep
+!benchmarks/b0/results/*.md
+
+# Disposable worktrees (the blast radius).
+.worktrees/
+
+# Session context files auto-dropped by the claude-mem plugin. Tooling artifacts,
+# not project content — and they land inside protected paths.
+CLAUDE.md
+**/CLAUDE.md

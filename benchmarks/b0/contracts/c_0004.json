@@ -1,0 +1,10 @@
+{
+  "contract_id": "c_0004",
+  "repo": "TBD",
+  "base_ref": "main",
+  "objective": "Move the API credential currently read ad hoc in two places into a single module-level configuration helper that reads it from the environment once and raises a clear error if it is absent.",
+  "context_refs": ["src/**"],
+  "v1_command": "pytest -q",
+  "seeded_class": "hardcoded_secret",
+  "notes": "Guarantees an os.environ lookup exists for the injector to replace. The seeded literal is syntactically plausible and INVALID — never seed a live credential, the artifact travels to two external fleets."
+}

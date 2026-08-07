@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chingis.local/schema/decision/v1",
+  "title": "Executive Decision",
+  "description": "Executive -> kernel. One structured decision per wake. Emitted as a strict tool call; server-enforced structured outputs in Phase 1, grammar-constrained decoding in Phase 3. The kernel re-validates regardless -- defense in depth, not trust. Spec §3.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "decision", "reason_code", "confidence", "params"],
+  "properties": {
+    "schema_version": {
+      "description": "Bumped only via the §10 proposal ratchet. A bump costs one deliberate cache re-warm.",
+      "const": 1
+    },
+    "decision": {
+      "description": "The action space. Versioned; frozen within a version. Spec §3.",
+      "type": "string",
+      "enum": [
+        "dispatch",
+        "route",
+        "retry",
+        "race",
+        "verify",
+        "escalate",
+        "compress_ledger",
+        "revise_plan",
+        "edit_policy",
+        "request_human",
+        "checkpoint",
+        "halt"
+      ]
+    },
+    "reason_code": {
+      "description": "Enum, for the bandit. Per-(task_type, lane, reason_code) outcome stats feed both live judgment and reflex-writing.",
+      "type": "string",
+      "enum": [
+        "cost_ceiling",
+        "quota_peak_multiplier",
+        "quota_headroom",
+        "lane_capability_fit",
+        "lane_healthcheck_failed",
+        "security_lane_default",
+        "refusal_reroute",
+        "verify_failed_revise",
+        "difficulty_estimate_high",
+        "difficulty_estimate_low",
+        "race_justified",
+        "budget_threshold_descope",
+        "ledger_cap_reached",
+        "plan_invalidated",
+        "ambiguous_objective",
+        "gate_decision_required",
+        "reflex_match",
+        "reflex_override",
+        "low_confidence_escalation",
+        "outage_drain",
+        "terminal_success",
+        "terminal_failure"
+      ]
+    },
+    "confidence": {
+      "description": "< 0.6 => kernel forces escalate regardless of verb. Not advisory.",
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "params": {
+      "description": "Verb-specific. The kernel validates shape per verb; two invalid attempts => decision_invalid => forced escalate.",
+      "type": "object",
+      "properties": {
+        "lane": { "type": "string", "enum": ["WR", "W1", "W2", "W0"] },
+        "contract_id": { "type": "string", "pattern": "^c_[0-9]{4}$" },
+        "model": { "type": "string" },
+        "verifier": { "type": "string", "enum": ["V2", "V3"] },
+        "target_tier": { "type": "string", "enum": ["luna", "sol", "operator"] },
+        "lanes": {
+          "description": "race only: exactly two.",
+          "type": "array",
+          "items": { "type": "string", "enum": ["WR", "W1", "W2", "W0"] },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "policy_patch": {
+          "description": "edit_policy only. Task-scoped unless the operator promotes it. Must carry provenance; see policy/routing_policy.yaml.",
+          "type": "object"
+        },
+        "question": { "type": "string" },
+        "summary": { "type": "string" },
+        "status": { "type": "string", "enum": ["success", "failed", "abandoned"] }
+      }
+    }
+  }
+}

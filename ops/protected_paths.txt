@@ -1,0 +1,17 @@
+# Paths outside the loop's write access. Plan §7, Spec §0/§10: "The gate never learns."
+#
+# One path prefix per line, repo-relative. Blank lines and # comments ignored.
+# Changing THIS file is itself protected — the write-set cannot widen its own hole.
+#
+# Editing any of these requires CHINGIS_OPERATOR=1, off-cycle, and shows up in git
+# history. That is the audit trail for the audit trail.
+
+kernel/
+verify/seeded/
+verify/v1_runners.py
+evals/
+docs/
+ops/
+migrations/
+executive/schema/
+contracts/contract.schema.json
