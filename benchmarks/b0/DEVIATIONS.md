@@ -212,3 +212,28 @@ Each was right on its own; the aggregate is a monoculture.
 Now counted by `lab_diversity()` and reported as a warning rather than left to be noticed.
 This is a **finding for the operator, not something to auto-correct** — rebalancing means
 choosing a different provider for a position, which is a stack decision, not a repair.
+
+## D8 — Four generations lost to the wall clock, and the budget bought environment setup
+
+**Noticed:** 2026-08-07, failure count rising from 3 to 6 mid-run.
+
+`c_0016/W2`, `c_0017/W1`, `c_0018/W1`, `c_0019/W1` all hit the 900s wall. The artifact
+records why: `terminal_reason: "aborted_tools"`, `duration_api_ms: 181323` against ~935s
+elapsed. **The model thought for three minutes and the tools ran for twelve.**
+
+The tool is the test command. `llm-brain-kit`'s V1 is `uv run --with pytest python -m
+pytest -q`, and every contract runs in a *fresh worktree*, so `uv` resolves and builds an
+environment from scratch — repeatedly, because a worker told to add tests naturally runs
+them more than once.
+
+**This is a harness design error, not a fleet limitation.** A contract's wall budget is
+supposed to buy reasoning; here most of it bought dependency resolution. Two of the four
+failures are on contracts whose *only* difficulty was the environment.
+
+**Consequence.** Loss is asymmetric — three of four are W1, and all four are on the two
+slowest contracts — so both the per-direction split and the clean-contract false-flag
+denominator lose more from one arm than the other.
+
+**Repair, after the main run:** re-run the four with a pre-warmed environment and a wall
+that reflects thinking time rather than `uv` time. Recorded here rather than fixed mid-run,
+so the contracts that already completed stay comparable to each other.
