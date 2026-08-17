@@ -52,6 +52,26 @@ rule. (Spec §6)
 | GLM-4.7 | **W2's actual inner model**, measured 2026-08-17 by probing the Z.ai Anthropic endpoint. W2 is a mapping z.ai owns, not a model we select. | Flat under the coding plan |
 | Claude / Grok / DeepSeek | Reachable **only** through W3 today; each needs its own key set (`ANTHROPIC_API_KEY`, `XAI_API_KEY`, `DEEPSEEK_API_KEY`). Unset keys are refused by the adapter before launch, so an unconfigured route is a lane outage, not a worker failure. | Metered |
 
+## Network containment — what `net:none` actually means (2026-08-17)
+
+- **WR is contained.** Its bash runs under `sandbox-exec` with `(deny network*)` when the
+  contract grants no network. Enforcement is at the OS, below the command, so it holds
+  against `curl`, `python`, `nc`, and whatever else a worker reaches for. If the platform
+  cannot provide `sandbox-exec`, the lane **fails closed** — it refuses to run bash rather
+  than running it unconstrained.
+- **The grant is all-or-nothing.** `sandbox-exec` filters by operation, not by host, so
+  `net:allowlist:a.example` opens **every** host. The contract schema is more expressive
+  than the enforcement. Treat any non-empty allowlist as "this contract has the internet"
+  and do not rely on the host list as a boundary.
+- **The packaged lanes are NOT contained this way.** W1, W2, and W3 run their own inner
+  shells; Chingis does not gate their tools. W3 inherits dsh's `workspace-write` sandbox
+  (which does deny network escalation and does deny writes outside the worktree, though
+  `/private/tmp` remains writable). W1/W2 have whatever Claude Code permits. A `net:none`
+  on a packaged-lane contract describes intent, not enforcement.
+- Before 2026-08-17 **none** of this was true: `net:none` was declared everywhere and
+  enforced nowhere, and `Registry.check_net` was dead code. Any conclusion drawn before
+  that date about a worker's network reach was unfounded.
+
 ## Open unknowns
 
 Stated so the executive can reason about its own uncertainty rather than confabulate:

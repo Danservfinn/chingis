@@ -18,6 +18,21 @@ from kernel.capabilities import CapabilityDenied, Registry, safe_join
 
 MAX_OUTPUT = 20_000
 
+#: Deny every network operation, allow everything else. Path containment is already the
+#: worktree cwd plus the token's path scope, so this profile deliberately changes nothing
+#: except the network -- a broader profile would start breaking git and pytest, and a
+#: containment that breaks the worker is an outage rather than a boundary.
+_NO_NET_PROFILE = "(version 1)(allow default)(deny network*)"
+
+#: Whether this platform can enforce `net:none` at all. False makes `_bash` fail closed.
+NET_SANDBOX_AVAILABLE = Path("/usr/bin/sandbox-exec").exists()
+
+
+class NetContainmentUnavailable(RuntimeError):
+    """Raised when a `net:none` contract asks for bash on a platform that cannot contain
+    it. Deliberately not caught anywhere: running unconstrained under a contract that
+    declares no network is the bug this class exists to prevent from recurring."""
+
 
 @dataclass
 class ToolCall:
@@ -123,12 +138,50 @@ class ToolBox:
         # attempt to parse the command for escapes, because parsing shell is a losing game.
         # Path containment for reads/writes is enforced by the OS working directory and by
         # the fact that this token grants no path outside the worktree to the other tools.
+        #
+        # NETWORK is enforced by the OS for the same reason: a worker can reach the network
+        # with curl, python, nc, or something nobody listed, so the boundary has to sit
+        # below the command rather than in a pattern match on it. Until 2026-08-17 there
+        # was no boundary at all -- `net:none` was declared by every contract and enforced
+        # by nothing, which is a claim that manufactures confidence instead of containment.
+        argv, shell = self._wrap_for_net(command)
         try:
             p = subprocess.run(
-                command, shell=True, cwd=str(self.worktree), capture_output=True,
+                argv, shell=shell, cwd=str(self.worktree), capture_output=True,
                 text=True, timeout=self.timeout_s,
             )
         except subprocess.TimeoutExpired:
             return ToolResult(False, f"command timed out after {self.timeout_s}s")
         out = ((p.stdout or "") + (p.stderr or ""))[:MAX_OUTPUT]
         return ToolResult(p.returncode == 0, f"exit={p.returncode}\n{out}")
+
+    # ------------------------------------------------------------- network --
+    def _wrap_for_net(self, command: str):
+        """Return (argv-or-command, shell_flag), sandboxed iff the token grants no network.
+
+        `sandbox-exec` is the enforcement point. It is deprecated by Apple and still the
+        only thing on this machine that can deny a whole process tree the network without
+        root, a VM, or a per-command allowlist nobody can maintain. If it disappears in a
+        future macOS, `NET_SANDBOX_AVAILABLE` goes False and this **fails closed** -- a
+        `net:none` contract stops running bash rather than running it unconstrained,
+        because silently reverting to the old behaviour is exactly the failure this
+        replaced.
+
+        KNOWN LIMIT, asserted by `tests/test_net_containment.py`: the grant is
+        all-or-nothing. `sandbox-exec` filters by operation, not by host, so
+        `net:allowlist:a.example` opens **every** host, not just that one. The contract
+        schema is more expressive than the enforcement, so a per-host allowlist reads as
+        a stricter promise than the kernel can keep. Treat any non-empty allowlist as
+        "this contract has the internet", and see policy/facts.md.
+        """
+        cap = self.registry.get(self.token)
+        if cap.net:                                   # any grant => unrestricted, per above
+            return command, True
+        if not NET_SANDBOX_AVAILABLE:
+            raise NetContainmentUnavailable(
+                "net:none cannot be enforced on this platform (sandbox-exec absent); "
+                "refusing to run bash unconstrained under a contract that declares no "
+                "network"
+            )
+        return ["/usr/bin/sandbox-exec", "-p", _NO_NET_PROFILE, "/bin/bash", "-c",
+                command], False
