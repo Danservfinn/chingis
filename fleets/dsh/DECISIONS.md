@@ -149,3 +149,21 @@ factorial generator × reviewer design with ≥3 lineages, which is the thing W3
 possible and which two lanes cannot do by construction. **Its thresholds are left blank as
 `OPERATOR MUST SET`.** Choosing a bar is the operator's act, and choosing one after seeing
 the numbers that suggested the hypothesis would be worthless.
+
+## D10 — plan items deliberately NOT built, so the ledger balances
+
+An auditor should be able to account for every task in the plan. These were skipped on
+purpose, and each would have been actively wrong to build:
+
+| Plan item | Status | Why |
+|---|---|---|
+| 0.2 `uv add --optional dsh deepseek-harness` | **not done** | Wrong and unsafe package (D3); transport is the CLI (D4), so there is no Python dependency to add. `pyproject.toml` is untouched. |
+| 2.3 extend `v2_crossfleet.OPPOSITE` with W3 | **not done** | V2 is dropped. Extending the reviewer map of a module that must never wire would make a dead module look maintained, and would leave a W3 reviewer assignment sitting there for someone to switch on. |
+| Phase 3 council (`verify/v25_council.py`) | **not built** | It scaled a pairwise result B0 rejected. A quorum of reviewers does not repair a hypothesis that failed its bar; it launders it. The successor question is drafted in `benchmarks/b02/` instead. |
+| Phase 4 `ws.cordis.yml`, `ws_adapter.py`, `plugin_proposal.py` | **not built** | Gate closed (D7). Building the lane behind a closed gate leaves a loaded mechanism whose only remaining safeguard is that nobody edits one file. |
+| Phase 5 kill criterion: council catch-rate floor | **not built** | Guards a council that does not exist. |
+| Phase 5 kill criterion: 3 consecutive negative held-out cycles | **not built** | The M-ladder is scaffolded and unexercised; there is no cycle to count yet. Belongs with the work that opens it, not ahead of it. |
+| Phase 5 kill criterion: W3 writes outside its worktree → halt | **not built as a check** | It would test dsh's sandbox, and this integration deliberately does not rely on that sandbox. Chingis' containment is the worktree and the diff, which the kernel already owns for every lane. What IS asserted is Chingis-side: that the adapter roots the process at the worktree and puts session state outside it (`tests/test_w3_dsh_adapter.py`). |
+
+The two Phase 5 items that did not depend on any of the above — the W3 arm in the M0
+control and the ratchet's protected-path refusal — were built (D8).
