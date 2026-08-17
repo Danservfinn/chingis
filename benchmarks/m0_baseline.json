@@ -9,74 +9,59 @@
     "inlane_retries": 0
   },
   "summary": {
-    "contracts": 4,
-    "v1_passed": 4,
-    "honest_successes": 4,
+    "contracts": 3,
+    "v1_passed": 3,
+    "honest_successes": 3,
     "disqualified_for_test_weakening": 0,
     "total_usd": null,
     "success_per_dollar": null,
-    "total_mtok": 0.1265,
-    "successes_per_mtok": 31.62,
-    "mean_wall_s": 70.0
+    "total_mtok": 0.026,
+    "successes_per_mtok": 115.23,
+    "mean_wall_s": 52.5
   },
   "results": [
     {
-      "contract_id": "c_0001",
+      "contract_id": "v_0001_median_even",
       "status": "done",
       "v1_pass": true,
       "attempts": 1,
       "usd": 0.0,
-      "tokens_in": 34321,
-      "tokens_out": 1221,
-      "wall_s": 64.2,
+      "tokens_in": 5742,
+      "tokens_out": 889,
+      "wall_s": 21.7,
       "files_touched": [
-        "backend/tests/test_text_stats.py",
-        "backend/text_stats.py"
+        "src/stats.py",
+        "tests/test_stats.py"
       ],
       "test_weakening": []
     },
     {
-      "contract_id": "c_0002",
+      "contract_id": "v_0002_parse_reraise",
       "status": "done",
       "v1_pass": true,
       "attempts": 1,
       "usd": 0.0,
-      "tokens_in": 11662,
-      "tokens_out": 1313,
-      "wall_s": 53.6,
+      "tokens_in": 7896,
+      "tokens_out": 717,
+      "wall_s": 26.8,
       "files_touched": [
-        "backend/pagination.py",
-        "backend/tests/test_pagination.py"
+        "src/parsing.py",
+        "tests/test_parsing.py"
       ],
       "test_weakening": []
     },
     {
-      "contract_id": "c_0003",
+      "contract_id": "v_0003_cache_ttl",
       "status": "done",
       "v1_pass": true,
       "attempts": 1,
       "usd": 0.0,
-      "tokens_in": 16614,
-      "tokens_out": 2526,
-      "wall_s": 93.0,
+      "tokens_in": 9039,
+      "tokens_out": 1752,
+      "wall_s": 108.9,
       "files_touched": [
-        "backend/retry_util.py",
-        "backend/tests/test_retry_util.py"
-      ],
-      "test_weakening": []
-    },
-    {
-      "contract_id": "c_0004",
-      "status": "done",
-      "v1_pass": true,
-      "attempts": 1,
-      "usd": 0.0,
-      "tokens_in": 57677,
-      "tokens_out": 1149,
-      "wall_s": 69.2,
-      "files_touched": [
-        "backend/api_config.py",
-        "backend/tests/test_api_config.py"
+        "src/cache.py",
+        "tests/test_cache.py"
       ],
       "test_weakening": []
     }

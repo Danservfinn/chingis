@@ -182,7 +182,14 @@ def main() -> int:
     registry = Registry()
     adapter = {"WR": lambda: RawAdapter(registry), "W3": DshAdapter}[args.lane]()
 
-    files = sorted(args.contracts.glob("c_*.json"))
+    # Was glob("c_*.json"). A corpus using any other prefix matched ZERO files, and the
+    # run then wrote an EMPTY baseline over the real one -- a silent zero that destroys
+    # the thing it was supposed to measure. Any *.json is a candidate now, and an empty
+    # match is a hard error rather than a quiet success.
+    files = sorted(p for p in args.contracts.glob("*.json") if not p.name.startswith("_"))
+    if not files:
+        ap.error(f"no contracts matched {args.contracts}/*.json -- refusing to write an "
+                 f"empty baseline over the existing one")
     if args.limit:
         files = files[: args.limit]
 

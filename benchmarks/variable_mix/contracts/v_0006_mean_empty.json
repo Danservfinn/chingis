@@ -1,0 +1,20 @@
+{
+  "contract_id": "v_0006_mean_empty",
+  "repo": "/Users/kurultai/chingis/benchmarks/variable_mix/fixture",
+  "base_ref": "main",
+  "objective": "src/stats.py mean() raises ZeroDivisionError on an empty list. Make it raise a clear ValueError naming the problem. Add one test.",
+  "context_refs": [
+    "src/**",
+    "tests/**"
+  ],
+  "axis": "cheap_suffices",
+  "axis_rationale": "trivial work where an expensive lane is pure waste. Tests whether adaptive routing spends less for the same result.",
+  "v1_command": "pytest",
+  "budget": {
+    "wall_min": 8,
+    "quota_units": 1,
+    "tokens_usd": 0.5,
+    "tool_calls": 25,
+    "inlane_retries": 0
+  }
+}

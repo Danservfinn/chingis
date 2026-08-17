@@ -1,0 +1,20 @@
+{
+  "contract_id": "v_0007_shared_helper",
+  "repo": "/Users/kurultai/chingis/benchmarks/variable_mix/fixture",
+  "base_ref": "main",
+  "objective": "src/stats.py and src/parsing.py both need a shared _require_non_empty(value, name) helper that raises ValueError. Add it in a new src/validation.py, use it in BOTH modules, and add tests for the helper.",
+  "context_refs": [
+    "src/**",
+    "tests/**"
+  ],
+  "axis": "multi_file",
+  "axis_rationale": "the change spans files, so scope discipline and diff_scope matter.",
+  "v1_command": "pytest",
+  "budget": {
+    "wall_min": 8,
+    "quota_units": 1,
+    "tokens_usd": 0.5,
+    "tool_calls": 25,
+    "inlane_retries": 0
+  }
+}

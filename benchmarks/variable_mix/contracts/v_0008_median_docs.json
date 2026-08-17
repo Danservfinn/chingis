@@ -1,0 +1,20 @@
+{
+  "contract_id": "v_0008_median_docs",
+  "repo": "/Users/kurultai/chingis/benchmarks/variable_mix/fixture",
+  "base_ref": "main",
+  "objective": "The median() docstring in src/stats.py describes behaviour the code does not have. Make the code and the documentation agree. Add a test for whichever behaviour you conclude is correct.",
+  "context_refs": [
+    "src/**",
+    "tests/**"
+  ],
+  "axis": "ambiguous",
+  "axis_rationale": "the requirement is underspecified, so interpretation differs and the verifier is the only arbiter.",
+  "v1_command": "pytest",
+  "budget": {
+    "wall_min": 8,
+    "quota_units": 1,
+    "tokens_usd": 0.5,
+    "tool_calls": 25,
+    "inlane_retries": 0
+  }
+}
