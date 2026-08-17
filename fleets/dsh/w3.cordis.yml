@@ -1,10 +1,23 @@
 # W3 worker composition — a patch overlay on dsh's stock `headless` profile.
 #
-# Deliberately boring. No `tool-cordis`, no subagents, no Code Mode: W3 is a WORKER
-# lane like W1/W2, and the only thing that makes it interesting is that it is the
-# first PACKAGED lane whose inner shell is open source and whose every step lands in
-# an inspectable session JSONL. The sovereign lane (WS, self-authored tools) is a
-# separate composition and is NOT wired — see fleets/dsh/README.md.
+# W3 is a WORKER lane like W1/W2. The sovereign lane (WS, self-authored tools via
+# `tool-cordis`) is a separate composition and is NOT wired — see fleets/dsh/README.md.
+#
+# CORRECTION (2026-08-17): this header previously claimed "no subagents". That was
+# false. A patch overlay only overrides the rows it names, and dsh's stock `headless`
+# bundle ships a fairly complete agent harness that this overlay leaves untouched:
+# `subagent` + `tool-subagent` (provider: spawn), `compaction-basic`, `plan-mode`,
+# `tool-todo`, `tool-goal`, `tool-ralph`, `skill`/`tool-skill`, `tool-web`
+# (fetch disabled), `spill`, and `repeat-tool-reminder`. Verified with
+# `dsh --profile headless --patch w3.cordis.yml --dump-config`.
+#
+# So a W3 worker may spawn its own subagents and compact its own context inside the
+# lane. That is not a problem — Chingis judges the lane by its diff, exactly as it
+# judges W1 and W2, and does not care how the inner shell reached it — but it is more
+# machinery than the old comment admitted, and an inner shell nobody has inventoried
+# is precisely the opacity this project keeps writing down rather than assuming away.
+# Only `tool-cordis` and Code Mode are genuinely absent; they live in dsh's `advanced`
+# overlay, which this file does not apply.
 #
 # A patch replaces the targeted row's whole `config`, so every row here restates the
 # fields it wants. Rows the stock profile already carries (tool-bash, tool-fs,

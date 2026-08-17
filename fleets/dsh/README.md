@@ -55,7 +55,21 @@ mkdir -p .runtime && cd .runtime \
 ## Composition
 
 `w3.cordis.yml` is a **patch overlay** on dsh's stock `headless` profile, not a whole
-tree. It sets four things and deliberately leaves the rest alone:
+tree. It overrides four rows and leaves the rest of the bundle alone — which is more than
+it sounds like, because the stock headless bundle is a fairly complete agent harness.
+Inventoried 2026-08-17 with `dsh --profile headless --patch w3.cordis.yml --dump-config`,
+a W3 worker also gets: `subagent` + `tool-subagent` (provider `spawn`), `compaction-basic`,
+`plan-mode`, `tool-todo`, `tool-goal`, `tool-ralph`, `skill`/`tool-skill`, `tool-web`
+(with `fetch: false`), `spill`, `token-meter`, and `repeat-tool-reminder`.
+
+**A W3 worker can therefore spawn its own subagents and compact its own context inside
+the lane.** That is not a problem in itself — Chingis judges the lane by its diff exactly
+as it judges W1 and W2, and does not care how the inner shell got there — but it is real
+machinery, and an inner shell nobody has inventoried is the opacity this project keeps
+writing down rather than assuming away. Only `tool-cordis` and Code Mode are absent; they
+live in dsh's `advanced` overlay, which this file does not apply.
+
+The four overridden rows:
 
 1. **`llm-pi-ai` routes** — the four labs, each as an `apiKeyEnv` *reference*. No secret
    is in this file. An unset key fails at request time in dsh, so
