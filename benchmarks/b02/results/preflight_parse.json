@@ -1,97 +1,35 @@
 {
   "floor": 0.9,
   "summary": {
-    "glm-5.3": 1.0,
-    "glm-4.7": 1.0,
-    "claude-sonnet": 1.0
+    "anthropic": 1.0
   },
   "rows": [
     {
-      "reviewer": "glm-5.3",
+      "reviewer": "anthropic",
       "artifact": "off_by_one",
       "parsed": true,
       "detail": "ok (1 findings, reject)"
     },
     {
-      "reviewer": "glm-5.3",
+      "reviewer": "anthropic",
       "artifact": "swallowed_exception",
       "parsed": true,
       "detail": "ok (1 findings, reject)"
     },
     {
-      "reviewer": "glm-5.3",
+      "reviewer": "anthropic",
       "artifact": "hardcoded_secret",
       "parsed": true,
       "detail": "ok (1 findings, reject)"
     },
     {
-      "reviewer": "glm-5.3",
+      "reviewer": "anthropic",
       "artifact": "encoding_bug",
       "parsed": true,
       "detail": "ok (1 findings, reject)"
     },
     {
-      "reviewer": "glm-5.3",
-      "artifact": "clean",
-      "parsed": true,
-      "detail": "ok (0 findings, approve)"
-    },
-    {
-      "reviewer": "glm-4.7",
-      "artifact": "off_by_one",
-      "parsed": true,
-      "detail": "ok (1 findings, reject)"
-    },
-    {
-      "reviewer": "glm-4.7",
-      "artifact": "swallowed_exception",
-      "parsed": true,
-      "detail": "ok (1 findings, reject)"
-    },
-    {
-      "reviewer": "glm-4.7",
-      "artifact": "hardcoded_secret",
-      "parsed": true,
-      "detail": "ok (1 findings, reject)"
-    },
-    {
-      "reviewer": "glm-4.7",
-      "artifact": "encoding_bug",
-      "parsed": true,
-      "detail": "ok (1 findings, reject)"
-    },
-    {
-      "reviewer": "glm-4.7",
-      "artifact": "clean",
-      "parsed": true,
-      "detail": "ok (0 findings, approve)"
-    },
-    {
-      "reviewer": "claude-sonnet",
-      "artifact": "off_by_one",
-      "parsed": true,
-      "detail": "ok (1 findings, reject)"
-    },
-    {
-      "reviewer": "claude-sonnet",
-      "artifact": "swallowed_exception",
-      "parsed": true,
-      "detail": "ok (1 findings, reject)"
-    },
-    {
-      "reviewer": "claude-sonnet",
-      "artifact": "hardcoded_secret",
-      "parsed": true,
-      "detail": "ok (1 findings, reject)"
-    },
-    {
-      "reviewer": "claude-sonnet",
-      "artifact": "encoding_bug",
-      "parsed": true,
-      "detail": "ok (2 findings, reject)"
-    },
-    {
-      "reviewer": "claude-sonnet",
+      "reviewer": "anthropic",
       "artifact": "clean",
       "parsed": true,
       "detail": "ok (0 findings, approve)"

@@ -105,27 +105,54 @@ def review_glm47(prompt: str) -> str:
     return "".join(b.get("text", "") for b in r.get("content", []))
 
 
-def review_anthropic(prompt: str) -> str:
-    """Anthropic native, through W3's pi-ai route. Requires ANTHROPIC_API_KEY.
+#: Anything that could silently redirect "Anthropic" somewhere else. An ANTHROPIC_API_KEY
+#: also takes precedence over the claude.ai OAuth login, so it must go too -- and on this
+#: machine a stray one could easily hold a z.ai value.
+REDIRECT_VARS = ("ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY",
+                 "ANTHROPIC_MODEL", "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX")
 
-    This used to run through the W1 Claude Code lane. Those lanes were removed
-    2026-08-17, and reaching for the `claude` binary directly would reintroduce by the
-    back door exactly what was removed at the front -- so this path now needs a real key
-    like any other route, and says so when it does not have one.
+
+class FleetContamination(RuntimeError):
+    """The Anthropic reviewer is not actually reaching Anthropic."""
+
+
+def _native_env() -> dict:
+    """Environment with every redirect stripped, so OAuth reaches Anthropic itself.
+
+    This restores the guard that lived in the deleted `claude_adapter`. Without it a
+    leaked `ANTHROPIC_BASE_URL` points the "Anthropic" reviewer at the z.ai endpoint, and
+    B0.2 would measure GLM reviewing GLM while reporting it as a cross-lab contrast --
+    the exact corruption that would invalidate the experiment without anything failing.
     """
-    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-    if not key:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY unset. Anthropic was previously reached through the W1 "
-            "Claude Code lane, removed 2026-08-17. Without this key B0.2 has only ONE "
-            "lab and cannot separate reviewer identity from lineage."
-        )
-    r = _post("https://api.anthropic.com/v1/messages",
-              {"model": "claude-sonnet-4-5", "max_tokens": 4000,
-               "messages": [{"role": "user", "content": prompt}]},
-              {"x-api-key": key, "anthropic-version": "2023-06-01",
-               "Content-Type": "application/json"})
-    return "".join(b.get("text", "") for b in r.get("content", []))
+    env = {k: v for k, v in os.environ.items() if k not in REDIRECT_VARS}
+    for var in REDIRECT_VARS:
+        if "z.ai" in (os.environ.get(var) or "").lower():
+            raise FleetContamination(
+                f"{var} points at z.ai; refusing to call that lab 'anthropic'")
+    return env
+
+
+def review_anthropic(prompt: str) -> str:
+    """Anthropic via Claude Code OAuth — the subscription, not a metered key.
+
+    Flat-rate by design: B0.2's scored run is 300+ reviews, and paying per token for that
+    is the difference between an experiment and a bill. The model is pinned explicitly
+    rather than left to the CLI default, because reviewer IDENTITY is the variable under
+    test and a vendor default that shifts underneath the run would silently change it.
+    """
+    env = _native_env()
+    env["ANTHROPIC_MODEL"] = os.environ.get("B02_ANTHROPIC_MODEL", "claude-sonnet-4-5")
+    p = subprocess.run([os.environ.get("CLAUDE_BIN", "claude"), "-p",
+                        "--output-format", "json"],
+                       input=prompt, capture_output=True, text=True, timeout=300, env=env)
+    try:
+        d = json.loads(p.stdout)
+    except (json.JSONDecodeError, AttributeError):
+        return p.stdout or ""
+    served = ((d.get("modelUsage") or {}) and list(d["modelUsage"])[:1] or [""])[0]
+    if served and "glm" in served.lower():
+        raise FleetContamination(f"Anthropic reviewer was served {served!r}")
+    return d.get("result", "")
 
 
 #: glm-5.3 and glm-4.7 are two identities in ONE lab (z.ai). anthropic is the only second
