@@ -91,9 +91,15 @@ def test_non_reflexable_events_never_match(tmp_path):
 
 
 # ========================================================== B5 verification ====
-def test_v2_refuses_to_run_before_b0():
-    """V2 is not a default. It exists because B0 measured it beating self-review."""
-    with pytest.raises(B0NotRun, match="binding gate"):
+def test_v2_refuses_to_run_without_a_b0_pass():
+    """V2 is not a default. It exists because B0 measured it beating self-review.
+
+    Both refusals count, and the test asserts the REFUSAL rather than either message:
+    before the run the gate refuses for want of a report, and after 2026-08-17 it
+    refuses because the report says FAIL. Pinning the old wording would have made a
+    real verdict look like a broken test.
+    """
+    with pytest.raises(B0NotRun):
         require_b0_pass()
 
 

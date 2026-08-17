@@ -1,0 +1,74 @@
+# W3 worker composition — a patch overlay on dsh's stock `headless` profile.
+#
+# Deliberately boring. No `tool-cordis`, no subagents, no Code Mode: W3 is a WORKER
+# lane like W1/W2, and the only thing that makes it interesting is that it is the
+# first PACKAGED lane whose inner shell is open source and whose every step lands in
+# an inspectable session JSONL. The sovereign lane (WS, self-authored tools) is a
+# separate composition and is NOT wired — see fleets/dsh/README.md.
+#
+# A patch replaces the targeted row's whole `config`, so every row here restates the
+# fields it wants. Rows the stock profile already carries (tool-bash, tool-fs,
+# sandbox-policy, session-persistence-jsonl) are left alone on purpose.
+
+# One lane, many labs. Each route is a credential REFERENCE resolved per request;
+# no secret enters this file. A route whose key is unset is not an error here — it
+# fails at request time — so `adapters/dsh_adapter.py` refuses such a route up front
+# instead, turning a worker-shaped MISSING_CREDENTIAL into a Chingis-side refusal.
+- id: llm-pi-ai
+  config:
+    providers:
+      # api.z.ai/api/coding/paas/v4 — the same endpoint the WR lane meters against,
+      # reached here through a packaged shell instead of our own tool loop.
+      zai:
+        apiKeyEnv: ZAI_API_KEY
+      anthropic:
+        apiKeyEnv: ANTHROPIC_API_KEY
+      xai:
+        apiKeyEnv: XAI_API_KEY
+      deepseek:
+        apiKeyEnv: DEEPSEEK_API_KEY
+
+# The adapter overrides both per contract; these are the defaults for a bare run.
+- id: agent-default-model
+  config:
+    provider: zai
+    model: glm-5.2
+
+# Headless has no UI to answer an approval prompt, so the stock `ask` policy would
+# stall the lane until its wall-clock budget killed it. `never` removes the PROMPT,
+# not the containment: `sandbox-policy` stays at workspace-write, rooted at the
+# process cwd, which the adapter sets to the worktree. Chingis' own guarantee is the
+# worktree + the diff, exactly as for every other lane -- dsh's sandbox is defense in
+# depth and is never the thing being relied on (upstream calls it "not a security
+# boundary"; we agree, and do not use it as one).
+- id: approval
+  config:
+    policy: never
+
+# dsh refuses to boot if the composed sandbox+approval defaults match no NAMED preset,
+# which is a good refusal: it stops a deployment from drifting into an unnamed
+# permission posture nobody chose. Ours is deliberately not `danger-full-access` --
+# that one drops the sandbox too. `workspace-write-unattended` keeps writes rooted at
+# the worktree and only removes the prompt there is no one to answer.
+- id: permission
+  config:
+    defaultPreset: workspace-write-unattended
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+      workspace-write-unattended:
+        sandbox: workspace-write
+        approval: never
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+
+# Worker artifacts do not phone home. DISABLED is already the stock default; stating
+# it here means an upstream default flip cannot silently start exporting our sessions.
+- id: session-telemetry-otel
+  config:
+    mode: DISABLED

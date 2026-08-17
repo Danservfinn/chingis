@@ -21,3 +21,12 @@ benchmarks/b0/results/**
 # not project content — and they land inside protected paths.
 CLAUDE.md
 **/CLAUDE.md
+
+# W3 (dsh) lane. The PIN is package.json + package-lock.json, which ARE tracked;
+# the tree they install and the vendored Node runtime are build output.
+fleets/dsh/node_modules/
+fleets/dsh/.runtime/
+
+# Lane run state: dsh session logs live here so they can never enter a worktree
+# and ride into a diff. Flywheel data, regenerable, and it carries worker text.
+runs/

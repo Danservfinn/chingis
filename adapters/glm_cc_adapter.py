@@ -13,7 +13,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from .base import Result, Status, detect_refusal, strip_tooling_artifacts
+from .base import Result, Status, detect_refusal, strip_tooling_artifacts, worktree_diff
 
 CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 DEFAULT_ENDPOINT = "https://api.z.ai/api/anthropic"
@@ -73,7 +73,6 @@ class GlmCodeAdapter:
                       refusal_signal=refusal, lane=self.lane, model="glm-5.2")
 
 
-def _diff(worktree: Path) -> str:
-    subprocess.run(["git", "-C", str(worktree), "add", "-A"], capture_output=True)
-    return subprocess.run(["git", "-C", str(worktree), "diff", "--cached"],
-                          capture_output=True, text=True).stdout
+# Kept as a module-local name so existing call sites read unchanged; the one
+# implementation now lives in base.py, shared with every other lane.
+_diff = worktree_diff

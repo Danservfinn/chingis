@@ -18,7 +18,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from .base import Result, Status, detect_refusal
+from .base import Result, Status, detect_refusal, worktree_diff
 from .codex_oauth import CodexAuth, CodexQuotaExhausted, list_models, respond
 
 CODEX_BIN = os.environ.get("CODEX_BIN", "codex")
@@ -100,7 +100,6 @@ def _prompt(contract: dict) -> str:
             "Work only inside this checkout. Make the change and stop.")
 
 
-def _diff(worktree: Path) -> str:
-    subprocess.run(["git", "-C", str(worktree), "add", "-A"], capture_output=True)
-    return subprocess.run(["git", "-C", str(worktree), "diff", "--cached"],
-                          capture_output=True, text=True).stdout
+# Kept as a module-local name so existing call sites read unchanged; the one
+# implementation now lives in base.py, shared with every other lane.
+_diff = worktree_diff

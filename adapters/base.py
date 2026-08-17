@@ -119,6 +119,18 @@ def strip_tooling_artifacts(worktree: Path, tracked: set[str] | None = None) -> 
     return removed
 
 
+def worktree_diff(worktree: Path) -> str:
+    """The artifact every lane returns: staged diff of everything the worker touched.
+
+    Lives here because four lanes had byte-identical copies of it, and a lane whose
+    diff is computed differently from the others is not running "the same contract
+    unmodified" (B2) however similar the code looks.
+    """
+    subprocess.run(["git", "-C", str(worktree), "add", "-A"], capture_output=True)
+    return subprocess.run(["git", "-C", str(worktree), "diff", "--cached"],
+                          capture_output=True, text=True).stdout
+
+
 def _tracked_files(worktree: Path) -> set[str]:
     out = subprocess.run(["git", "-C", str(worktree), "ls-tree", "-r", "--name-only", "HEAD"],
                          capture_output=True, text=True)

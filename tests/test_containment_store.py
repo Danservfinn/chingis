@@ -283,13 +283,29 @@ def test_cli_exposes_the_operator_surface():
 
 def test_w1_and_w2_are_two_distinct_labs():
     """The whole premise of cross-fleet verification. W1 and W2 run the SAME packaged tool
-    and differ only by environment, so this is the one property that can be silently lost."""
+    and differ only by environment, so this is the one property that can be silently lost.
+
+    Kept after B0's FAIL verdict dropped V2: the property still guards every future
+    lab-contrast experiment, and a collapsed W1/W2 would corrupt one silently.
+    """
     import cli
     from kernel.capabilities import Registry
     lanes = cli.build_adapters(Registry())
-    assert {"WR", "W1", "W2", "W0"} == set(lanes)
+    assert {"WR", "W1", "W2", "W3", "W0"} == set(lanes)
     assert lanes["W1"].lab == "anthropic"
     assert "z.ai" in lanes["W2"].endpoint.lower()
+
+
+def test_w3_default_route_does_not_impersonate_a_second_lab():
+    """W3's default route is z.ai -- the SAME lab as W2. That is deliberate (metered vs
+    flat is the point), but it means a W2/W3 pairing varies the SHELL, not the lab. If a
+    future experiment ever reads 'two lanes' as 'two labs' it will measure self-review
+    and call it cross-review, which is the exact error `assert_native` exists to stop."""
+    import cli
+    from kernel.capabilities import Registry
+    w3 = cli.build_adapters(Registry())["W3"]
+    assert w3.provider == "zai"
+    assert "z.ai" in cli.build_adapters(Registry())["W2"].endpoint.lower()
 
 
 def test_redirect_vars_cannot_silently_collapse_w1_into_w2(monkeypatch):

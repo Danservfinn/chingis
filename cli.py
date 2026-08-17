@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 from adapters.claude_adapter import ClaudeAdapter            # noqa: E402
+from adapters.dsh_adapter import DshAdapter                  # noqa: E402
 from adapters.glm_cc_adapter import GlmCodeAdapter          # noqa: E402
 from adapters.local_adapter import LocalAdapter             # noqa: E402
 from adapters.raw_adapter import RawAdapter                 # noqa: E402
@@ -43,8 +44,14 @@ def build_adapters(registry: Registry) -> dict:
     # W1 and W2 run the SAME packaged tool against DIFFERENT labs, so the cross-fleet
     # contrast varies only the lab. See adapters/claude_adapter.py for why that is a
     # better pairing than the Codex-vs-GLM one the plan specified.
+    #
+    # W3 is a THIRD packaged shell (dsh) whose route is a string: one adapter reaches
+    # z.ai, Anthropic, xAI, and DeepSeek. After B0's FAIL verdict it is justified on
+    # routing grounds only -- metered billing beside the flat-rate fleets, and a
+    # reroute target for refusals that needs no new subscription. It is NOT a
+    # verification lane. See adapters/dsh_adapter.py.
     return {"WR": RawAdapter(registry), "W1": ClaudeAdapter(),
-            "W2": GlmCodeAdapter(), "W0": LocalAdapter()}
+            "W2": GlmCodeAdapter(), "W3": DshAdapter(), "W0": LocalAdapter()}
 
 
 def cmd_health(args) -> int:

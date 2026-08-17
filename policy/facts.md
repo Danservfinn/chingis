@@ -15,12 +15,17 @@ rule. (Spec §6)
 | WR | Metered per token | None — every step is in the audit log | The faithful path. Chingis-owned tool loop: `bash`, `read_file`, `apply_patch`, worktree-scoped. |
 | W1 | Flat-rate (Claude subscription) | Fixed inner shell, not inspectable | **Anthropic.** Claude Code headless, native. Same tool as W2, different lab — the cross-fleet contrast varies only the lab. |
 | W2 | Flat-rate (GLM Coding Plan) | Fixed inner shell, not inspectable | **Z.ai / GLM.** Claude Code headless → Z.ai endpoint. Quota is prompt-based with peak multipliers. |
+| W3 | **Metered per token — real USD**, unlike the flat fleets | Fixed inner shell, not inspectable *in practice* (see below) | **Any of four labs.** dsh headless; route selected per contract as `model: "provider/model"` over `zai`, `anthropic`, `xai`, `deepseek`. Consumes **no plan quota** — this is the lane to reach for when quota is the binding constraint and dollars are not, and the reroute target when a fleet refuses. |
 | W0 | Electricity | None | Local MLX. Summarize, triage, injection pre-screen, shadow scoring. |
 
 ## Quota
 
 - GLM peak multiplier ≈ **3×** during 14:00–18:00 UTC+8 ≈ **02:00–06:00 America/New_York**.
 - Quota, not dollars, is the scarce resource on both packaged fleets.
+- **W3 spends dollars instead of quota.** That is what it is for: when a flat fleet is
+  quota-blocked (W1 was, until ~2026-09-01) or is in its 3x peak window, W3 reaches the
+  same class of model for money. Route deliberately — an unbudgeted W3 habit converts a
+  fixed monthly cost into a variable one.
 - Units per contract are **guessed until B4**. B4 replaces these with a week of observed
   usage. Treat any number here as a placeholder with wide error bars.
 - `quota_threshold` fires on **burn-rate anomaly**, not just totals.
@@ -31,6 +36,10 @@ rule. (Spec §6)
   Expected background noise, not a failure. One hop to reroute.
 - Refusal detection is heuristic per fleet — exit codes, phrase patterns, and the
   empty-diff-with-explanation shape. Every detection is logged for tuning.
+- **W3 is the cheapest reroute after any refusal**: the next lab is a string in the
+  contract's `model` field, not a new adapter or a new subscription. Rerouting a refused
+  contract from W1 to `W3 anthropic/...` keeps the lab and changes the shell; rerouting
+  to `W3 xai/...` or `W3 deepseek/...` changes the lab outright.
 
 ## Model tiers
 
@@ -39,15 +48,23 @@ rule. (Spec §6)
 | glm-4.6 / glm-5.2 | **Executive of record**, via the Z.ai coding endpoint. Emits schema-valid decisions. | Flat under the coding plan |
 | Sol | Escalation rung — **no transport**. Not offered on the current Codex plan. Escalate to the operator instead. | n/a |
 | Terra | Mid-tier worker duty on W1 | Flat under plan |
-| GLM-5.2 | WR worker duty, W2 inner model | Metered on WR, flat on W2 |
+| GLM-5.2 | WR worker duty, W2 inner model, W3 default route | Metered on WR and W3, flat on W2 |
+| Claude / Grok / DeepSeek | Reachable **only** through W3 today; each needs its own key set (`ANTHROPIC_API_KEY`, `XAI_API_KEY`, `DEEPSEEK_API_KEY`). Unset keys are refused by the adapter before launch, so an unconfigured route is a lane outage, not a worker failure. | Metered |
 
 ## Open unknowns
 
 Stated so the executive can reason about its own uncertainty rather than confabulate:
 
 - Real quota units per contract on either packaged fleet — **unmeasured until B4**.
-- Whether cross-fleet review actually beats self-review — **unmeasured until B0**.
-  Until B0 reports, the executive should not treat V2 as established signal.
+- Whether cross-fleet review actually beats self-review — **MEASURED 2026-08-17, and the
+  answer was no.** B0 returned FAIL: +10.0 pp against a pre-registered ≥15 pp bar, n=10,
+  McNemar p=1.0000, and the two directions disagreed in sign (W1-generated −20 pp,
+  W2-generated +40 pp). **V2 is dropped. Verification is V1+V3.** The executive must not
+  treat "a different fleet reviewed it" as signal, and must not propose V2 as a reflex.
+- Whether cross-fleet review is *asymmetric* — the sign disagreement above is the live
+  open question, and it is per-reviewer, not per-pair. Two labs cannot answer it.
+- Whether W3's inner loop can be made observable — its session log currently carries the
+  session header only, so the lane is opaque in practice. Unmeasured.
 - Refusal rates per task type — unmeasured.
 
 ## Provider substitution — 2026-08-06
