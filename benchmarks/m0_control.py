@@ -79,7 +79,10 @@ def run_one(contract: dict, adapter, registry: Registry, workdir: Path) -> M0Res
         attempts = attempt
         wt = workdir / f"m0_{cid}_{attempt}"
         try:
-            with Worktree(contract["repo"], contract.get("base_ref", "HEAD"), wt):
+            repo = Path(contract["repo"])
+            if not repo.is_absolute():
+                repo = ROOT / repo          # contracts ship repo-relative paths
+            with Worktree(repo, contract.get("base_ref", "HEAD"), wt):
                 result = adapter.run(spec, wt)
                 rc = result.raw_cost or {}
                 usd += float(rc.get("usd") or 0.0)

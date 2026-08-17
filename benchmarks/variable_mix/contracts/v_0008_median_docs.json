@@ -1,6 +1,6 @@
 {
   "contract_id": "v_0008_median_docs",
-  "repo": "/Users/kurultai/chingis/benchmarks/variable_mix/fixture",
+  "repo": "benchmarks/variable_mix/fixture",
   "base_ref": "main",
   "objective": "The median() docstring in src/stats.py describes behaviour the code does not have. Make the code and the documentation agree. Add a test for whichever behaviour you conclude is correct.",
   "context_refs": [

@@ -1,6 +1,6 @@
 {
   "contract_id": "v_0006_mean_empty",
-  "repo": "/Users/kurultai/chingis/benchmarks/variable_mix/fixture",
+  "repo": "benchmarks/variable_mix/fixture",
   "base_ref": "main",
   "objective": "src/stats.py mean() raises ZeroDivisionError on an empty list. Make it raise a clear ValueError naming the problem. Add one test.",
   "context_refs": [

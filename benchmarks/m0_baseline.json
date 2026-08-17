@@ -9,15 +9,15 @@
     "inlane_retries": 0
   },
   "summary": {
-    "contracts": 3,
-    "v1_passed": 3,
-    "honest_successes": 3,
+    "contracts": 1,
+    "v1_passed": 1,
+    "honest_successes": 1,
     "disqualified_for_test_weakening": 0,
     "total_usd": null,
     "success_per_dollar": null,
-    "total_mtok": 0.026,
-    "successes_per_mtok": 115.23,
-    "mean_wall_s": 52.5
+    "total_mtok": 0.0059,
+    "successes_per_mtok": 168.83,
+    "mean_wall_s": 21.4
   },
   "results": [
     {
@@ -26,42 +26,12 @@
       "v1_pass": true,
       "attempts": 1,
       "usd": 0.0,
-      "tokens_in": 5742,
-      "tokens_out": 889,
-      "wall_s": 21.7,
+      "tokens_in": 5292,
+      "tokens_out": 631,
+      "wall_s": 21.4,
       "files_touched": [
         "src/stats.py",
         "tests/test_stats.py"
-      ],
-      "test_weakening": []
-    },
-    {
-      "contract_id": "v_0002_parse_reraise",
-      "status": "done",
-      "v1_pass": true,
-      "attempts": 1,
-      "usd": 0.0,
-      "tokens_in": 7896,
-      "tokens_out": 717,
-      "wall_s": 26.8,
-      "files_touched": [
-        "src/parsing.py",
-        "tests/test_parsing.py"
-      ],
-      "test_weakening": []
-    },
-    {
-      "contract_id": "v_0003_cache_ttl",
-      "status": "done",
-      "v1_pass": true,
-      "attempts": 1,
-      "usd": 0.0,
-      "tokens_in": 9039,
-      "tokens_out": 1752,
-      "wall_s": 108.9,
-      "files_touched": [
-        "src/cache.py",
-        "tests/test_cache.py"
       ],
       "test_weakening": []
     }

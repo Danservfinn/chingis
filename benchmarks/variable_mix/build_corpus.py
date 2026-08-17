@@ -151,7 +151,10 @@ def build_contracts() -> int:
         cid = f"v_{i:04d}_{suffix}"
         (CONTRACTS / f"{cid}.json").write_text(json.dumps({
             "contract_id": cid,
-            "repo": str(FIXTURE),
+            # Repo-RELATIVE on purpose. An absolute path bakes in one machine's username
+            # (and leaks it in a public repo) and makes the corpus unusable to anyone who
+            # clones it. The runner resolves this against the repository root.
+            "repo": str(FIXTURE.relative_to(HERE.parent.parent)),
             "base_ref": "main",
             "objective": objective,
             "context_refs": refs,

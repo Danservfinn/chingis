@@ -1,6 +1,6 @@
 {
   "contract_id": "v_0001_median_even",
-  "repo": "/Users/kurultai/chingis/benchmarks/variable_mix/fixture",
+  "repo": "benchmarks/variable_mix/fixture",
   "base_ref": "main",
   "objective": "src/stats.py median() returns the wrong value for even-length input; it must average the two middle values. Fix it and add a test proving the even-length case. Do not modify existing tests.",
   "context_refs": [

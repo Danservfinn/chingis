@@ -1,6 +1,6 @@
 {
   "contract_id": "v_0002_parse_reraise",
-  "repo": "/Users/kurultai/chingis/benchmarks/variable_mix/fixture",
+  "repo": "benchmarks/variable_mix/fixture",
   "base_ref": "main",
   "objective": "src/parsing.py load_config() swallows malformed JSON and returns None, hiding the error from callers. Make it raise a clear error naming the problem instead, and add a test. Do not modify existing tests.",
   "context_refs": [

@@ -1,6 +1,6 @@
 {
   "contract_id": "v_0003_cache_ttl",
-  "repo": "/Users/kurultai/chingis/benchmarks/variable_mix/fixture",
+  "repo": "benchmarks/variable_mix/fixture",
   "base_ref": "main",
   "objective": "src/cache.py accepts a ttl argument and silently ignores it. Make ttl actually work. Add tests covering expiry.",
   "context_refs": [
