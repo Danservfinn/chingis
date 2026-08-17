@@ -40,9 +40,20 @@ def score_outcome(outcome: dict, *, budget_usd: float = 1.0) -> Score:
     v2 = {"approve": 1.0, "reject": 0.0}.get(outcome.get("v2_verdict") or "", 0.5)
     v3 = {"approve": 1.0, "reject": 0.0}.get(outcome.get("v3_verdict") or "", 0.5)
 
-    spent = float(outcome.get("cost_usd") or 0.0)
-    # Capped: cheapness cannot compensate for wrongness, only break ties among correct work.
-    efficiency = max(0.0, 1.0 - spent / budget_usd) if budget_usd > 0 else 0.0
+    # UNKNOWN cost is not zero cost. `cost_usd` is NULL whenever the lane's provider
+    # does not report per-call spend, and `float(None or 0.0)` made that read as zero
+    # spend -- i.e. as PERFECT efficiency -- so unpriced work scored higher than work
+    # whose price was actually measured. The reward signal was paying a bonus for being
+    # unmeasurable. Unknown now takes the same neutral 0.5 that an unknown V2/V3 verdict
+    # takes, so it neither rewards nor punishes.
+    raw_cost = outcome.get("cost_usd")
+    if raw_cost is None:
+        efficiency = 0.5
+    else:
+        spent = float(raw_cost)
+        # Capped: cheapness cannot compensate for wrongness, only break ties among
+        # correct work.
+        efficiency = max(0.0, 1.0 - spent / budget_usd) if budget_usd > 0 else 0.0
 
     value = W_V1 * v1_pass + W_V2 * v2 + W_V3 * v3 + W_COST * efficiency
     if not v1_pass:

@@ -25,7 +25,11 @@ def sampled(contract_id: str, rate: float = SAMPLE_RATE, salt: str = "v3") -> bo
 #: the previous hardcoded map sent W1 to "claude" while W1 IS Claude, and sent W2 to "sol",
 #: which has no transport at all. A map of stale assumptions is worse than no map, because
 #: it reports compliance while delivering the monoculture the tier exists to break.
-LANE_LAB = {"WR": "zai", "W1": "anthropic", "W2": "zai", "W0": "local"}
+#: Which lab actually serves each lane. W3 was absent until 2026-08-17, so
+#: `off_family_for("W3")` RAISED and V3 could not spot-check a single W3 artifact --
+#: the lane was added without telling the verifier it existed. W1/W2 are retained as
+#: historical lanes (removed 2026-08-17) so old artifacts still resolve.
+LANE_LAB = {"WR": "zai", "W3": "zai", "W1": "anthropic", "W2": "zai", "W0": "local"}
 
 #: Reviewer lab per generating lane: anything but the generator's own.
 OFF_FAMILY = {lane: ("anthropic" if lab != "anthropic" else "zai")
