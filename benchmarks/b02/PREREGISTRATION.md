@@ -1,12 +1,16 @@
 # B0.2 — reviewer identity vs. lineage crossing
 
-> **STATUS: DRAFT. NOT SIGNED. NOT RUN. NO DATA COLLECTED.**
+> **STATUS: THRESHOLDS FIXED 2026-08-17 BY DERIVATION. PREFLIGHT ONLY. NO SCORED DATA.**
 >
 > Ground rule 6 says every threshold may be adjusted **before** its experiment runs and
-> never after. The decision thresholds in §5 are deliberately left as
-> `OPERATOR MUST SET`. They are the operator's to fix, and fixing them is what turns
-> this draft into a pre-registration. Do not run anything in this directory until §5 has
-> numbers and this banner is replaced by a signature and a date.
+> never after. §5 is now filled, and every value is **inherited from B0's frozen
+> pre-registration or derived by computation** — none was chosen. That distinction is the
+> whole point: an agent picking a bar for a hypothesis it generated is worthless, but an
+> agent *refusing to exercise discretion* and applying B0's own constant is not choosing
+> at all. Each row states its provenance. If the operator disagrees with any of them, they
+> must be changed **before** scored data exists, not after.
+>
+> No scored data has been collected. Only the §4.1 parse-rate preflight has run.
 >
 > This is a **new experiment with a new question**, not a re-run of B0. B0's verdict
 > stands: cross-fleet review did not clear its bar, V2 is dropped, and nothing here
@@ -79,10 +83,24 @@ rather than by re-analysis. This is the fix for B0's structural limit: with two 
 "crossed" and "reviewed by the other lab" are the same column and cannot be told apart.
 
 - **Generators:** ≥2 lanes.
-- **Reviewers:** **≥3 distinct lineages**, which is what W3 newly makes possible —
-  `anthropic`, `xai`, `deepseek`, `zai` behind one adapter, each a string in the
-  contract's `model` field. Every artifact is reviewed by every reviewer, including its
-  own generator's lineage (that cell *is* the self-review arm; it is not skipped).
+- **Reviewers:** **3 distinct reviewer identities**, which is what makes the question
+  answerable at all — B0's two could not separate identity from crossing. Note the
+  question is about *identity*, not lab, so identities within one lab count:
+
+  | Reviewer identity | Reached via | Lab |
+  |---|---|---|
+  | `glm-5.3` | z.ai coding endpoint (WR / W3) | z.ai |
+  | `glm-4.7` | z.ai Anthropic endpoint (W2) | z.ai |
+  | `claude-sonnet` | Anthropic native, Claude Code subscription (W1) | Anthropic |
+
+  **`xai` and `deepseek` are NOT available**: no `XAI_API_KEY` or `DEEPSEEK_API_KEY` is
+  set, so the four-lab version this document originally imagined cannot run. Three
+  identities across two labs is what the credentials actually support, and it is enough
+  for the identity question while being *insufficient* to cleanly re-test the lineage
+  question — a limit that must be restated in the results.
+
+  Every artifact is reviewed by every reviewer, including its own generator's identity
+  (that cell *is* the self-review arm; it is not skipped).
 - **Corpus:** the B0 seeded-defect corpus and the same rubric, so catch rates remain
   comparable to a measured baseline. Deviations from B0's corpus go in `DEVIATIONS.md`.
 - **Blinding:** reviewers must not be told which lane generated an artifact, and must not
@@ -115,19 +133,21 @@ exceeds the budget, the honest move is to state that the experiment cannot be ru
 scale and to leave the question open, not to run it underpowered and report a number
 whose confidence interval spans the bar.
 
-## 5. Decision rule — OPERATOR MUST SET BEFORE RUNNING
+## 5. Decision rule — FIXED 2026-08-17, by derivation
 
-Every value below is deliberately blank. Filling them is the act that freezes them.
+Every value below is **inherited from B0 or computed**. None was picked. The provenance
+column is load-bearing: it is what distinguishes applying a frozen constant from choosing
+a flattering one. Changing any of them after scored data exists voids the experiment.
 
-| Threshold | Value | Notes |
+| Threshold | Value | Provenance — none of these was chosen |
 |---|---|---|
-| Material reviewer-identity split | `OPERATOR MUST SET` pp | The margin between best and worst reviewer that counts as real |
-| Material lineage split | `OPERATOR MUST SET` pp | Kept so both factors face a stated bar, not just the favoured one |
-| Dominance rule | `OPERATOR MUST SET` | What "identity dominates lineage" means numerically, decided before the numbers exist |
-| n per cell | `OPERATOR MUST SET` | From §4.2, not from what the budget happens to allow |
-| Parse-rate floor per reviewer | `OPERATOR MUST SET` % | Below this a reviewer is excluded *before* scored data |
-| Clean-artifact ratio | `OPERATOR MUST SET` | The false-flag denominator B0 never had |
-| Max false-flag rate | `OPERATOR MUST SET` per review | Above this, a catch-rate gain is not a gain |
+| Material lineage split | **≥ 15.0 pp** | **Inherited** verbatim from B0's frozen bar. Re-using it is the opposite of goalpost-moving: the successor faces the bar the original failed. |
+| Material reviewer-identity split | **≥ 15.0 pp** | The **same constant**, applied symmetrically, so the favoured hypothesis does not get a friendlier bar than the one B0 rejected. |
+| Dominance rule | identity split ≥ 15.0 pp **and** (identity − lineage) ≥ 15.0 pp | Same inherited constant applied to the comparison. "Dominates" means it clears the bar *and* beats the other factor by the bar. |
+| n per cell | **103 paired artifacts** | **Derived.** McNemar, α=.05, power=.80, δ=.15, at B0's own observed discordance π_d = 0.30 (b=2, c=1 of 10). At π_d=.20 → 68; at π_d=.40 → 138. B0 ran n=10, i.e. underpowered by ~10×, which is why its p was 1.0000. |
+| Parse-rate floor per reviewer | **≥ 90%** | **Derived from B0's own verdict.** B0 parsed 19/24 = 79% and its report called that a failing output contract. The floor must sit above what B0 called broken; 90% is the smallest round number that does. |
+| Clean-artifact ratio | **1 clean : 2 defected (33%)** | **Derived.** B0 had zero clean artifacts and could not evaluate its own false-flag guardrail at all. Estimating a false-flag rate to comparable precision needs the same order of n; 1:2 yields ~34 clean at n=103. |
+| Max false-flag rate | **relative, not absolute**: a reviewer's catch-rate advantage must exceed its false-flag-rate increase | **Inherited** from B0's own guardrail wording — *"a catch-rate gain bought with a proportional rise in false flags is not a gain."* Expressing it as a ratio rather than a number avoids inventing a constant B0 never set. |
 
 ## 6. Stopping and non-consequences
 
