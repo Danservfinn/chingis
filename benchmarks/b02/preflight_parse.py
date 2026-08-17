@@ -96,12 +96,28 @@ def review_glm53(prompt: str) -> str:
 
 
 def review_glm47(prompt: str) -> str:
+    """The second z.ai identity, requested BY NAME.
+
+    This used to send `model: "claude-sonnet-4-5"` and rely on z.ai's mapping to hand
+    back glm-4.7 -- which is precisely the defect that left W2 labelled `glm-5.2` for
+    months while it actually served glm-4.7. A reviewer identity obtained by asking for a
+    different model and trusting a vendor's aliasing is not pinned: if z.ai remaps sonnet
+    to a 5.x model tomorrow, the identity under test changes mid-experiment and nothing
+    fails. The served model is asserted, so a remap stops the run instead of quietly
+    rewriting what was measured.
+    """
+    model = os.environ.get("B02_ZAI_ALT_MODEL", "glm-4.7")
     key = os.environ.get("ZAI_KEY") or os.environ["ZAI_API_KEY"]
     r = _post(ZAI_ANTHROPIC + "/v1/messages",
-              {"model": "claude-sonnet-4-5", "max_tokens": 4000,
+              {"model": model, "max_tokens": 4000,
                "messages": [{"role": "user", "content": prompt}]},
               {"x-api-key": key, "anthropic-version": "2023-06-01",
                "Content-Type": "application/json"})
+    served = r.get("model") or ""
+    if served and served != model:
+        raise FleetContamination(
+            f"asked z.ai for {model!r} and was served {served!r}; the reviewer identity "
+            "under test is not the one configured")
     return "".join(b.get("text", "") for b in r.get("content", []))
 
 
