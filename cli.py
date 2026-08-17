@@ -54,6 +54,50 @@ def build_adapters(registry: Registry) -> dict:
     return {"WR": RawAdapter(registry), "W3": DshAdapter(), "W0": LocalAdapter()}
 
 
+#: Terminal per-contract events. A contract may produce several (a retry emits one each);
+#: the LAST is its outcome, because otherwise a lane that retries often would look more
+#: productive rather than less.
+TERMINAL_EVENTS = ("worker_done", "verify_failed", "worker_failed", "worker_refused")
+
+
+def record_outcomes(conn, events) -> int:
+    """Write one `outcomes` row per contract. Returns how many contracts were recorded.
+
+    This existed as `DecisionLog.record_outcome` and was called from nowhere, so the
+    table stayed empty and `m0_control.py --compare` always read an empty Chingis arm --
+    which is why M0 vs Chingis, the founding comparison, had never been run end to end.
+
+    Cost is recorded as NULL when the lane does not report dollars. WR meters tokens and
+    knows its spend; W3's provider does not expose per-call cost. Writing 0.0 for the
+    unknown case would give an unpriced lane an infinite success-per-dollar and hand
+    whichever arm used it a win it did not earn.
+    """
+    from kernel.decision_log import DecisionLog
+    log = DecisionLog(conn)
+    latest: dict[str, dict] = {}
+    for e in events:
+        if str(getattr(e, "type", "")) not in TERMINAL_EVENTS:
+            continue
+        p = getattr(e, "payload", None) or {}
+        cid = p.get("contract_id")
+        if not cid:
+            continue
+        cost = p.get("cost") or {}
+        v1 = p.get("v1") or p.get("detail") or {}
+        latest[cid] = {
+            "v1_pass": bool(v1.get("pass")),
+            "v1_detail": v1,
+            # .get, never `or 0.0`: absent means unknown, and unknown is not free.
+            "cost_usd": cost.get("usd"),
+            "quota_units": cost.get("quota_units"),
+            "wall_s": p.get("wall_s"),
+        }
+    for cid, outcome in latest.items():
+        log.record_outcome(cid, outcome)
+    conn.commit()
+    return len(latest)
+
+
 def cmd_health(args) -> int:
     registry = Registry()
     print("== lanes ==")
@@ -106,6 +150,8 @@ def cmd_submit(args) -> int:
                        model=getattr(executive, "model", executive.name),
                        latency_ms=rt.decision_latencies[i] if i < len(rt.decision_latencies) else None)
 
+    recorded = record_outcomes(conn, rt.bus.processed)
+
     print("\n== events ==")
     for e in rt.bus.processed:
         print(f"  seq={e.seq:<3} {e.type}")
@@ -119,6 +165,7 @@ def cmd_submit(args) -> int:
         print(f"\n== AWAITING OPERATOR ==\n  {rt.state.awaiting_human}")
     print(f"\n== budget ==\n  {rt.meters.snapshot()}")
     print(f"== halt ==\n  {rt.bus.halt_reason or '(queue drained)'}")
+    print(f"== outcomes ==\n  {recorded} contract(s) recorded")
     print(f"== replay ==\n  {replay_task(conn, task_id)}")
     conn.close()
     return 0
