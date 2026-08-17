@@ -72,7 +72,7 @@ def test_lane_and_result_shape(adapter_factory, worktree):
     r = a.run(CONTRACT, worktree)
     assert isinstance(r, Result)
     assert r.lane == "W3"
-    assert r.model == "zai/glm-5.2", "the lane records provider/model, not model alone"
+    assert r.model == "zai/glm-5.3", "the lane records provider/model, not model alone"
     assert r.status is Status.DONE
 
 

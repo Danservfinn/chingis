@@ -330,7 +330,14 @@ def main() -> int:
          f"V1** — {', '.join(ff_excluded)}. A 'clean' contract whose artifact does not pass "
          "its own tests is not clean, and findings against it are not false flags."
          if ff_excluded else
-         "All clean artifacts passed V1, so the denominator is intact."),
+         # An EMPTY denominator is not a clean bill of health, and the earlier wording
+         # reported one as though it were: with zero clean reviews the guardrail cannot be
+         # evaluated at all, which is the opposite of "intact".
+         ("**No clean artifacts have been reviewed yet**, so there is no false-flag "
+          "denominator. An empty denominator is not a clean bill of health — the guardrail "
+          "cannot be evaluated until it has data."
+          if (ff["self"][1] + ff["cross"][1]) == 0 else
+          "All clean artifacts passed V1, so the denominator is intact.")),
         "",
         "## `deleted_failing_test` — the class V1 cannot see",
         "",

@@ -7,9 +7,9 @@
 The question is narrow on purpose: **holding the model constant, does harness
 architecture change task success?**
 
-    WR      Chingis' own kernel-gated tool loop      glm-5.2 @ z.ai coding endpoint
-    W3      dsh, packaged, driven headless           glm-5.2 @ z.ai via pi-ai
-    KUBLAI  Nous hermes-agent, `--profile kublai`    glm-5.2, pinned with -m
+    WR      Chingis' own kernel-gated tool loop      glm-5.3 @ z.ai coding endpoint
+    W3      dsh, packaged, driven headless           glm-5.3 @ z.ai via pi-ai
+    KUBLAI  Nous hermes-agent, `--profile kublai`    glm-5.3 (its own default)
 
 This is the fix for the confound that sank B0. There, W1 and W2 differed in lab AND the
 result could not separate "different lab" from "different reviewer". Here every arm runs
@@ -57,7 +57,7 @@ from benchmarks.harness_contrast.contracts import (CONTRACTS,  # noqa: E402
 from kernel.capabilities import Registry                      # noqa: E402
 from verify.v1_runners import V1Runner                        # noqa: E402
 
-MODEL = "glm-5.2"
+MODEL = "glm-5.3"
 SSH_HOST = "kublai-mini"
 REMOTE_ROOT = "/tmp/hc_bench"
 HERMES_PATH = "export PATH=$PATH:/opt/homebrew/bin:$HOME/.local/bin"
@@ -291,7 +291,7 @@ def main() -> int:
 
 
 def report(rows: list[ArmResult], arms: list[str]) -> None:
-    print("\n=== B1H harness contrast — one model (glm-5.2), one verifier ===\n")
+    print("\n=== B1H harness contrast — one model (glm-5.3), one verifier ===\n")
     print(f"{'arm':<8} {'solved':>7} {'n':>3} {'weakened':>9} {'median s':>9}")
     print("-" * 42)
     lines = []

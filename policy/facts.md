@@ -45,10 +45,11 @@ rule. (Spec §6)
 
 | Tier | Use | Cost shape |
 |---|---|---|
-| glm-4.6 / glm-5.2 | **Executive of record**, via the Z.ai coding endpoint. Emits schema-valid decisions. | Flat under the coding plan |
+| glm-4.6 / glm-5.3 | **Executive of record**, via the Z.ai coding endpoint. Emits schema-valid decisions. `glm-4.6` is the live default. | Flat under the coding plan |
 | Sol | Escalation rung — **no transport**. Not offered on the current Codex plan. Escalate to the operator instead. | n/a |
 | Terra | Mid-tier worker duty on W1 | Flat under plan |
-| GLM-5.2 | WR worker duty, W2 inner model, W3 default route | Metered on WR and W3, flat on W2 |
+| GLM-5.3 | WR worker duty, W3 default route. **Reasoning model** — it spends completion tokens on reasoning before any content, so a small `max_tokens` returns empty content rather than a short answer. Absent from pi-ai's installed catalog, so `w3.cordis.yml` declares it. | Metered on WR and W3 |
+| GLM-4.7 | **W2's actual inner model**, measured 2026-08-17 by probing the Z.ai Anthropic endpoint. W2 is a mapping z.ai owns, not a model we select. | Flat under the coding plan |
 | Claude / Grok / DeepSeek | Reachable **only** through W3 today; each needs its own key set (`ANTHROPIC_API_KEY`, `XAI_API_KEY`, `DEEPSEEK_API_KEY`). Unset keys are refused by the adapter before launch, so an unconfigured route is a lane outage, not a worker failure. | Metered |
 
 ## Open unknowns

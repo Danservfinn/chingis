@@ -61,7 +61,7 @@ tree. It sets four things and deliberately leaves the rest alone:
    is in this file. An unset key fails at request time in dsh, so
    `adapters/dsh_adapter.py` refuses such a route up front instead — a configuration
    error should not arrive wearing a worker's clothes.
-2. **`agent-default-model`** — `zai/glm-5.2` for a bare run; the adapter overrides per
+2. **`agent-default-model`** — `zai/glm-5.3` for a bare run; the adapter overrides per
    contract via the contract's `model` field (`"provider/model"`).
 3. **`approval: never` + a named `workspace-write-unattended` preset** — headless has no
    UI to answer a prompt, so the stock `ask` policy would stall the lane until its
@@ -105,15 +105,23 @@ a real `ZAI_API_KEY` inherited from the environment, and the lane then fails wit
 
 ```sh
 uv run pytest tests/test_w3_dsh_adapter.py -q   # 12 tests, fake `dsh`, no network
-uv run python cli.py health                     # W3 should read: ok (zai/glm-5.2)
+uv run python cli.py health                     # W3 should read: ok (zai/glm-5.3)
 uv run python tests/live_w3_smoke.py <fixture>  # real model, real money
 ```
 
-The live smoke is the one that matters. Verified 2026-08-17 on `zai/glm-5.2`: real diff,
+The live smoke is the one that matters. Verified 2026-08-17 on `zai/glm-5.3`: real diff,
 V1 `diff_scope` and `pytest` both PASS, executive shown
-`worker output: 294 chars, 1 lines, 1 non-blank` with `screened_by=heuristic`, replay
-chain intact. Route it elsewhere with `W3_MODEL="anthropic/claude-sonnet-4-5"` and the
-matching key — changing labs is a string, which is the entire point of the lane.
+`worker output: 432 chars, 6 lines, 4 non-blank` with `screened_by=heuristic`, replay
+chain intact. (Also verified on `zai/glm-5.2` before the lane moved to 5.3.) Route it
+elsewhere with `W3_MODEL="anthropic/claude-sonnet-4-5"` and the matching key — changing
+labs is a string, which is the entire point of the lane.
+
+`glm-5.3` is a **reasoning model** and is **not in pi-ai's installed catalog**, which
+stops at 5.2. `w3.cordis.yml` therefore declares it in a `models` list; because such a
+list *replaces* the catalog rather than extending it, that list also restates every other
+z.ai model the route should keep serving. Remove an id from it and the route answers
+`UNKNOWN_MODEL` for that model. Budget output tokens generously: on a 20-token ceiling
+glm-5.3 spent the entire allowance reasoning and returned empty content.
 
 ## Not here
 

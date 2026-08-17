@@ -9,7 +9,7 @@
     "test_weakening": false,
     "out_of_scope": [],
     "diff_bytes": 340,
-    "wall_s": 35.39,
+    "wall_s": 42.97,
     "note": "",
     "excluded": false
   },
@@ -23,7 +23,7 @@
     "test_weakening": false,
     "out_of_scope": [],
     "diff_bytes": 375,
-    "wall_s": 47.92,
+    "wall_s": 29.06,
     "note": "",
     "excluded": false
   },
@@ -36,8 +36,8 @@
     "diff_scope_pass": true,
     "test_weakening": false,
     "out_of_scope": [],
-    "diff_bytes": 336,
-    "wall_s": 53.54,
+    "diff_bytes": 338,
+    "wall_s": 40.47,
     "note": "",
     "excluded": false
   }

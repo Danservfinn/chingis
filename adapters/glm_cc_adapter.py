@@ -15,6 +15,12 @@ from pathlib import Path
 
 from .base import Result, Status, detect_refusal, strip_tooling_artifacts, worktree_diff
 
+# What the endpoint ACTUALLY serves, probed 2026-08-17: a claude-sonnet-4-5 request to
+# api.z.ai/api/anthropic comes back stamped `glm-4.7`. This was hardcoded "glm-5.2" and
+# was simply wrong -- W2 artifacts (B0's included) carry that mislabel. It is a LABEL for
+# a mapping z.ai owns and can change under us, so re-probe rather than trust it.
+W2_INNER_MODEL = os.environ.get("W2_INNER_MODEL", "glm-4.7")
+
 CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 DEFAULT_ENDPOINT = "https://api.z.ai/api/anthropic"
 
@@ -70,7 +76,7 @@ class GlmCodeAdapter:
         return Result(status, {"diff": diff, "summary": text[:8000],
                        "stripped_tooling_artifacts": stripped},
                       {"wall_s": round(time.time() - started, 2), "quota_units_est": 1.0},
-                      refusal_signal=refusal, lane=self.lane, model="glm-5.2")
+                      refusal_signal=refusal, lane=self.lane, model=W2_INNER_MODEL)
 
 
 # Kept as a module-local name so existing call sites read unchanged; the one

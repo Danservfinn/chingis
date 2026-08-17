@@ -73,7 +73,7 @@ cannot close from inside.
 | **WR** (raw, primary) | Z.ai coding endpoint, `ZAI_API_KEY` | **live** — verified end-to-end: real model, kernel-gated tool loop, real worktree, V1 green |
 | **W2** (GLM fleet) | Claude Code headless → Z.ai Anthropic endpoint | wired; unexercised |
 | **W1** (second lab) | Claude Code headless → Anthropic, native | **live** — substituted for the Codex fleet, whose free-tier allowance is spent until ~2026-09-01. B0 ran on this substitution, so its numbers measure **Anthropic ↔ GLM** (`DEVIATIONS.md` D1) |
-| **W3** (dsh fleet) | `dsh --profile headless` → pi-ai → `zai` \| `anthropic` \| `xai` \| `deepseek` | **live** — verified end-to-end 2026-08-17 on `zai/glm-5.2`: real diff, V1 green, screen held, replay intact. Only `ZAI_API_KEY` is set; the other three routes are a key away |
+| **W3** (dsh fleet) | `dsh --profile headless` → pi-ai → `zai` \| `anthropic` \| `xai` \| `deepseek` | **live** — verified end-to-end 2026-08-17 on `zai/glm-5.3`: real diff, V1 green, screen held, replay intact. Only `ZAI_API_KEY` is set; the other three routes are a key away |
 | **W0** (local) | MLX / LM Studio | no server running |
 
 **W3 is a routing lane, not a verification lane.** B0 rejected cross-fleet review, and a
@@ -92,7 +92,7 @@ default route is `zai` — the *same lab* as W2. A W2/W3 pairing therefore varie
 not the lab, and reading "two lanes" as "two labs" would measure GLM reviewing GLM and call
 it cross-review. `test_w3_default_route_does_not_impersonate_a_second_lab` pins this.
 
-Everything else runs on Z.ai today: the executive (glm-4.6 / glm-5.2 via the coding
+Everything else runs on Z.ai today: the executive (glm-4.6 via the coding
 endpoint), the WR raw lane, W2, and W3's default route.
 
 Also worth knowing: the Codex endpoint offers `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`,

@@ -8,9 +8,10 @@
     "diff_scope_pass": true,
     "test_weakening": false,
     "out_of_scope": [],
-    "diff_bytes": 331,
-    "wall_s": 35.98,
-    "note": ""
+    "diff_bytes": 340,
+    "wall_s": 23.86,
+    "note": "",
+    "excluded": false
   },
   {
     "arm": "W3",
@@ -22,8 +23,9 @@
     "test_weakening": false,
     "out_of_scope": [],
     "diff_bytes": 375,
-    "wall_s": 19.84,
-    "note": ""
+    "wall_s": 29.15,
+    "note": "",
+    "excluded": false
   },
   {
     "arm": "W3",
@@ -35,8 +37,9 @@
     "test_weakening": false,
     "out_of_scope": [],
     "diff_bytes": 336,
-    "wall_s": 11.92,
-    "note": ""
+    "wall_s": 28.04,
+    "note": "",
+    "excluded": false
   },
   {
     "arm": "W3",
@@ -47,9 +50,10 @@
     "diff_scope_pass": true,
     "test_weakening": false,
     "out_of_scope": [],
-    "diff_bytes": 605,
-    "wall_s": 19.35,
-    "note": ""
+    "diff_bytes": 462,
+    "wall_s": 33.72,
+    "note": "",
+    "excluded": false
   },
   {
     "arm": "W3",
@@ -60,8 +64,9 @@
     "diff_scope_pass": true,
     "test_weakening": false,
     "out_of_scope": [],
-    "diff_bytes": 507,
-    "wall_s": 34.95,
-    "note": ""
+    "diff_bytes": 531,
+    "wall_s": 31.0,
+    "note": "",
+    "excluded": false
   }
 ]

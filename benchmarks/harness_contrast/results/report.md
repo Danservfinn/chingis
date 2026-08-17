@@ -1,4 +1,4 @@
-# B1H — harness contrast, first complete run (2026-08-17)
+# B1H — harness contrast (2026-08-17, `glm-5.3`)
 
 **Bottom line: three independent harnesses, same model, 15 of 15. The benchmark ran
 clean and discriminated nothing, because the task set has no headroom. No harness is
@@ -8,13 +8,17 @@ ranked here, because at this ceiling none can be.**
 
 | Arm | Harness | Solved | Test-weakened | Median s | Total s |
 |---|---|---|---|---|---|
-| `WR` | Chingis, own kernel-gated tool loop | **5 / 5** | 0 | 33.2 | 167.5 |
-| `W3` | dsh, packaged, headless | **5 / 5** | 0 | 19.8 | 122.0 |
-| `KUBLAI` | Nous `hermes-agent`, `--profile kublai` | **5 / 5** | 0 | 53.0 | 243.0 |
+| `WR` | Chingis, own kernel-gated tool loop | **5 / 5** | 0 | 27.1 | 151.5 |
+| `W3` | dsh, packaged, headless | **5 / 5** | 0 | 29.1 | 145.8 |
+| `KUBLAI` | Nous `hermes-agent`, `--profile kublai` | **5 / 5** | 0 | 43.0 | 212.5 |
 
-All three ran `glm-5.2` through the z.ai coding endpoint (`zai-coding`, verified in
-`~/.hermes/profiles/kublai/config.yaml`). Every diff was applied to a freshly rebuilt
+All three ran **`glm-5.3`** through the z.ai coding endpoint (`zai-coding`, verified in
+`~/.hermes/profiles/kublai/config.yaml`); 5.3 is also Kublai's own configured default, so
+the pin holds it where it already sat. Every diff was applied to a freshly rebuilt
 worktree and judged by Chingis' `V1Runner`. No arm verified itself.
+
+An earlier complete run on `glm-5.2` gave the same 15/15 with medians WR 33.2s, W3 19.8s,
+KUBLAI 53.0s.
 
 | Contract | WR | W3 | KUBLAI |
 |---|---|---|---|
@@ -42,10 +46,14 @@ then this apparatus measures that a harness is wired up, not that it is good.
 
 ## What this run does NOT show
 
-- **Not a speed ranking.** The medians differ (W3 19.8s, WR 33.2s, Kublai 53.0s) but the
-  arms differ in transport, process startup, and — for Kublai — an SSH round trip to a
-  machine doing other work. n=5, no repeats, no variance estimate. It is a stopwatch
-  reading, not a latency result.
+- **Not a speed ranking — and the 5.2 run proves it.** On `glm-5.2`, W3 looked
+  substantially faster than WR (19.8s vs 33.2s). On `glm-5.3` that gap **did not
+  replicate**: 29.1s vs 27.1s, reversed and within noise. Same harnesses, same tasks,
+  same verifier — only the model changed. A difference that flips sign when you change
+  something it was supposed to be independent of was never a harness property. The arms
+  also differ in transport, process startup, and (for Kublai) an SSH round trip to a
+  machine doing other work, with n=5 and no repeats. Stopwatch reading, not latency
+  result.
 - **Not that the harnesses are equivalent.** They were never separated. An untaken
   measurement is not a null result.
 

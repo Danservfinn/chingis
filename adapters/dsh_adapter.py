@@ -50,7 +50,7 @@ DSH_BIN = ROOT / "fleets" / "dsh" / "node_modules" / ".bin" / "dsh"
 NODE_BIN_DIR = ROOT / "fleets" / "dsh" / ".runtime" / "node-v24.19.0-darwin-arm64" / "bin"
 
 DEFAULT_PROVIDER = "zai"
-DEFAULT_MODEL = "glm-5.2"
+DEFAULT_MODEL = "glm-5.3"
 
 # Must stay in lockstep with the routes declared in w3.cordis.yml; a drift means this
 # adapter clears a route dsh then refuses, or vice versa. A test asserts the equality.

@@ -32,7 +32,7 @@ from kernel.runtime import Runtime
 from verify.v1_runners import V1Runner
 
 REPO = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/livefix")
-MODEL = os.environ.get("W3_MODEL", "zai/glm-5.2")
+MODEL = os.environ.get("W3_MODEL", "zai/glm-5.3")
 
 OBJECTIVE = (
     "The test suite has one failing test: median() returns the wrong value for an "

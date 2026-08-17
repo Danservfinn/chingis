@@ -8,8 +8,8 @@
     "diff_scope_pass": true,
     "test_weakening": false,
     "out_of_scope": [],
-    "diff_bytes": 497,
-    "wall_s": 53.0,
+    "diff_bytes": 477,
+    "wall_s": 53.12,
     "note": "",
     "excluded": false
   },
@@ -22,8 +22,8 @@
     "diff_scope_pass": true,
     "test_weakening": false,
     "out_of_scope": [],
-    "diff_bytes": 535,
-    "wall_s": 53.17,
+    "diff_bytes": 507,
+    "wall_s": 46.93,
     "note": "",
     "excluded": false
   }

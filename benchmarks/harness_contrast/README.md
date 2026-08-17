@@ -16,14 +16,20 @@ varied both at once. This benchmark exists partly to not repeat that. Every arm 
 
 | Arm | Harness | Model | Route |
 |---|---|---|---|
-| `WR` | Chingis' own kernel-gated tool loop | `glm-5.2` | z.ai coding endpoint |
-| `W3` | dsh, packaged, headless | `glm-5.2` | z.ai coding endpoint via pi-ai |
-| `KUBLAI` | Nous `hermes-agent`, `--profile kublai` | `glm-5.2` | `zai-coding` (verified in `~/.hermes/profiles/kublai/config.yaml`) |
+| `WR` | Chingis' own kernel-gated tool loop | `glm-5.3` | z.ai coding endpoint |
+| `W3` | dsh, packaged, headless | `glm-5.3` | z.ai coding endpoint via pi-ai |
+| `KUBLAI` | Nous `hermes-agent`, `--profile kublai` | `glm-5.3` | `zai-coding` (verified in `~/.hermes/profiles/kublai/config.yaml`) |
 
 So a difference between arms is attributable to the harness — the tool loop, the context
-assembly, the retry behaviour — and not to the model behind it. Kublai's own default is
-`glm-5.3`; it is pinned down to `5.2` with `-m` for the duration of one CLI call, which
-changes nothing on disk.
+assembly, the retry behaviour — and not to the model behind it. `glm-5.3` is also
+Kublai's *own* configured default, so the `-m` pin holds it where it already sits rather
+than moving it; nothing on disk changes either way.
+
+`glm-5.3` is a **reasoning model**: it spends completion tokens thinking before emitting
+content, so anything calling it needs real output headroom. It is absent from pi-ai's
+installed catalog (which stops at 5.2), so `fleets/dsh/w3.cordis.yml` declares it in a
+`models` list — and because such a list *replaces* the catalog, that list must also
+restate every other z.ai model the route should keep serving.
 
 ## One verifier, three harnesses
 

@@ -9,8 +9,9 @@
     "test_weakening": false,
     "out_of_scope": [],
     "diff_bytes": 340,
-    "wall_s": 42.62,
-    "note": ""
+    "wall_s": 25.16,
+    "note": "",
+    "excluded": false
   },
   {
     "arm": "WR",
@@ -22,8 +23,9 @@
     "test_weakening": false,
     "out_of_scope": [],
     "diff_bytes": 375,
-    "wall_s": 33.56,
-    "note": ""
+    "wall_s": 25.67,
+    "note": "",
+    "excluded": false
   },
   {
     "arm": "WR",
@@ -35,8 +37,9 @@
     "test_weakening": false,
     "out_of_scope": [],
     "diff_bytes": 336,
-    "wall_s": 29.39,
-    "note": ""
+    "wall_s": 27.61,
+    "note": "",
+    "excluded": false
   },
   {
     "arm": "WR",
@@ -47,9 +50,10 @@
     "diff_scope_pass": true,
     "test_weakening": false,
     "out_of_scope": [],
-    "diff_bytes": 648,
-    "wall_s": 28.69,
-    "note": ""
+    "diff_bytes": 693,
+    "wall_s": 45.94,
+    "note": "",
+    "excluded": false
   },
   {
     "arm": "WR",
@@ -60,8 +64,9 @@
     "diff_scope_pass": true,
     "test_weakening": false,
     "out_of_scope": [],
-    "diff_bytes": 792,
-    "wall_s": 33.21,
-    "note": ""
+    "diff_bytes": 822,
+    "wall_s": 27.09,
+    "note": "",
+    "excluded": false
   }
 ]

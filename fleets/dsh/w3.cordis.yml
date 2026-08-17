@@ -19,8 +19,25 @@
     providers:
       # api.z.ai/api/coding/paas/v4 — the same endpoint the WR lane meters against,
       # reached here through a packaged shell instead of our own tool loop.
+      #
+      # The `models` list exists because pi-ai's installed catalog stops at glm-5.2 and
+      # the lane runs glm-5.3. A list REPLACES the catalog rather than extending it, so
+      # every model this route should keep serving has to appear here -- an entry of
+      # nothing but `id` inherits that model's catalog metadata unchanged. Drop an id
+      # from this list and the route stops serving it with UNKNOWN_MODEL.
       zai:
         apiKeyEnv: ZAI_API_KEY
+        models:
+          # Not in pi-ai's catalog, so it takes the route's default capacities
+          # (262144 ctx / 32768 max out). It is a REASONING model: on a 20-token
+          # budget its reasoning consumed the whole allowance and the content came
+          # back empty, so anything calling it needs real output headroom.
+          - id: glm-5.3
+          - id: glm-5.2
+          - id: glm-5.1
+          - id: glm-4.7
+          - id: glm-5-turbo
+          - id: glm-4.5-air
       anthropic:
         apiKeyEnv: ANTHROPIC_API_KEY
       xai:
@@ -32,7 +49,7 @@
 - id: agent-default-model
   config:
     provider: zai
-    model: glm-5.2
+    model: glm-5.3
 
 # Headless has no UI to answer an approval prompt, so the stock `ask` policy would
 # stall the lane until its wall-clock budget killed it. `never` removes the PROMPT,
