@@ -12,21 +12,39 @@ from pathlib import Path
 
 from .base import Result, Status
 
-DEFAULT_URL = "http://127.0.0.1:8080/v1"
+#: Candidates tried in order when W0_URL/MLX_SERVER_URL is unset. MLX's 8080 was the only
+#: default, so W0 read as DOWN on a machine with a perfectly good ollama on 11434 -- and a
+#: lane that is down for a reachable reason is one nobody investigates. Explicit config
+#: still wins; this only decides where to look when nothing was said.
+DEFAULT_URLS = ("http://127.0.0.1:11434/v1", "http://127.0.0.1:8080/v1")
+DEFAULT_URL = DEFAULT_URLS[0]
 
 
 class LocalAdapter:
     lane = "W0"
 
-    def __init__(self, base_url: str | None = None, model: str = "local") -> None:
-        self.base_url = base_url or os.environ.get("MLX_SERVER_URL", DEFAULT_URL)
+    def __init__(self, base_url: str | None = None, model: str | None = None) -> None:
+        self.base_url = (base_url or os.environ.get("W0_URL")
+                         or os.environ.get("MLX_SERVER_URL") or self._discover())
         if not self.base_url.rstrip("/").endswith("/v1"):
             self.base_url = self.base_url.rstrip("/") + "/v1"
-        self.model = model
+        self.model = model or os.environ.get("W0_MODEL", "qwen3:0.6b")
 
     def _client(self):
         from openai import OpenAI
         return OpenAI(api_key="local", base_url=self.base_url)
+
+    @staticmethod
+    def _discover() -> str:
+        """First candidate that answers. Falls back to the first so the error names a URL."""
+        import urllib.request
+        for url in DEFAULT_URLS:
+            try:
+                urllib.request.urlopen(url.rstrip("/v1") + "/v1/models", timeout=2)
+                return url
+            except Exception:                                # noqa: BLE001
+                continue
+        return DEFAULT_URLS[0]
 
     def healthcheck(self) -> tuple[bool, str]:
         try:
