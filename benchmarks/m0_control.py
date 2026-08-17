@@ -31,6 +31,7 @@ sys.path.insert(0, str(ROOT))
 
 from adapters.base import Worktree                      # noqa: E402
 from adapters.claude_adapter import ClaudeAdapter       # noqa: E402
+from adapters.dsh_adapter import DshAdapter             # noqa: E402
 from adapters.glm_cc_adapter import GlmCodeAdapter      # noqa: E402
 from adapters.raw_adapter import RawAdapter             # noqa: E402
 from kernel.capabilities import Registry                # noqa: E402
@@ -59,7 +60,11 @@ class M0Result:
 def run_one(contract: dict, adapter, registry: Registry, workdir: Path) -> M0Result:
     """Dispatch, and on failure retry exactly once. No judgment anywhere in this function."""
     cid = contract["contract_id"]
-    spec = {**contract, "lane": FIXED_LANE, "capabilities": ["fs:worktree", "net:none", "proc:bash"],
+    # The lane the adapter actually IS, not the module default: --lane exists so the
+    # control arm can be run on another lane, and stamping FIXED_LANE into every spec
+    # labelled a W2 or W3 run as W1 in its own recorded artifact.
+    spec = {**contract, "lane": getattr(adapter, "lane", FIXED_LANE),
+            "capabilities": ["fs:worktree", "net:none", "proc:bash"],
             "output_schema": "diff+summary", "budget": FIXED_BUDGET,
             "verification": ["V1:pytest"]}
     started, usd, attempts = time.time(), 0.0, 0
@@ -148,7 +153,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--contracts", type=Path)
-    ap.add_argument("--lane", default=FIXED_LANE, choices=["WR", "W1", "W2"])
+    ap.add_argument("--lane", default=FIXED_LANE, choices=["WR", "W1", "W2", "W3"])
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--compare", metavar="DB")
     args = ap.parse_args()
@@ -160,7 +165,7 @@ def main() -> int:
 
     registry = Registry()
     adapter = {"WR": lambda: RawAdapter(registry), "W1": ClaudeAdapter,
-               "W2": GlmCodeAdapter}[args.lane]()
+               "W2": GlmCodeAdapter, "W3": DshAdapter}[args.lane]()
 
     files = sorted(args.contracts.glob("c_*.json"))
     if args.limit:
