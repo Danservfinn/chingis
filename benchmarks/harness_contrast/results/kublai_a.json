@@ -1,0 +1,41 @@
+[
+  {
+    "arm": "KUBLAI",
+    "contract_id": "hc_01_median",
+    "status": "failed",
+    "v1_pass": false,
+    "pytest_pass": false,
+    "diff_scope_pass": true,
+    "test_weakening": false,
+    "out_of_scope": [],
+    "diff_bytes": 0,
+    "wall_s": 45.18,
+    "note": ""
+  },
+  {
+    "arm": "KUBLAI",
+    "contract_id": "hc_02_bsearch",
+    "status": "failed",
+    "v1_pass": false,
+    "pytest_pass": false,
+    "diff_scope_pass": true,
+    "test_weakening": false,
+    "out_of_scope": [],
+    "diff_bytes": 0,
+    "wall_s": 45.69,
+    "note": ""
+  },
+  {
+    "arm": "KUBLAI",
+    "contract_id": "hc_03_mutable_default",
+    "status": "failed",
+    "v1_pass": false,
+    "pytest_pass": false,
+    "diff_scope_pass": true,
+    "test_weakening": false,
+    "out_of_scope": [],
+    "diff_bytes": 0,
+    "wall_s": 43.08,
+    "note": ""
+  }
+]

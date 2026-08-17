@@ -1,0 +1,67 @@
+[
+  {
+    "arm": "W3",
+    "contract_id": "hc_01_median",
+    "status": "done",
+    "v1_pass": true,
+    "pytest_pass": true,
+    "diff_scope_pass": true,
+    "test_weakening": false,
+    "out_of_scope": [],
+    "diff_bytes": 331,
+    "wall_s": 35.98,
+    "note": ""
+  },
+  {
+    "arm": "W3",
+    "contract_id": "hc_02_bsearch",
+    "status": "done",
+    "v1_pass": true,
+    "pytest_pass": true,
+    "diff_scope_pass": true,
+    "test_weakening": false,
+    "out_of_scope": [],
+    "diff_bytes": 375,
+    "wall_s": 19.84,
+    "note": ""
+  },
+  {
+    "arm": "W3",
+    "contract_id": "hc_03_mutable_default",
+    "status": "done",
+    "v1_pass": true,
+    "pytest_pass": true,
+    "diff_scope_pass": true,
+    "test_weakening": false,
+    "out_of_scope": [],
+    "diff_bytes": 336,
+    "wall_s": 11.92,
+    "note": ""
+  },
+  {
+    "arm": "W3",
+    "contract_id": "hc_04_retry_reraise",
+    "status": "done",
+    "v1_pass": true,
+    "pytest_pass": true,
+    "diff_scope_pass": true,
+    "test_weakening": false,
+    "out_of_scope": [],
+    "diff_bytes": 605,
+    "wall_s": 19.35,
+    "note": ""
+  },
+  {
+    "arm": "W3",
+    "contract_id": "hc_05_unicode_truncate",
+    "status": "done",
+    "v1_pass": true,
+    "pytest_pass": true,
+    "diff_scope_pass": true,
+    "test_weakening": false,
+    "out_of_scope": [],
+    "diff_bytes": 507,
+    "wall_s": 34.95,
+    "note": ""
+  }
+]
