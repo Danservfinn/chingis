@@ -1,0 +1,30 @@
+[
+  {
+    "arm": "KUBLAI",
+    "contract_id": "hc_04_retry_reraise",
+    "status": "done",
+    "v1_pass": true,
+    "pytest_pass": true,
+    "diff_scope_pass": true,
+    "test_weakening": false,
+    "out_of_scope": [],
+    "diff_bytes": 497,
+    "wall_s": 53.0,
+    "note": "",
+    "excluded": false
+  },
+  {
+    "arm": "KUBLAI",
+    "contract_id": "hc_05_unicode_truncate",
+    "status": "done",
+    "v1_pass": true,
+    "pytest_pass": true,
+    "diff_scope_pass": true,
+    "test_weakening": false,
+    "out_of_scope": [],
+    "diff_bytes": 535,
+    "wall_s": 53.17,
+    "note": "",
+    "excluded": false
+  }
+]
