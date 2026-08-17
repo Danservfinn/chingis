@@ -23,7 +23,7 @@ class _Ev:
         self.type, self.payload = type_, payload
 
 
-def _seed_contract(conn, cid="c_0001", fleet="WR"):
+def _seed_contract(conn, cid="t_0:c_0001", fleet="WR"):
     conn.execute(
         "INSERT OR IGNORE INTO contracts (id, task_id, fleet, spec_json, status, created_ts)"
         " VALUES (?,?,?,?,?,datetime('now'))", (cid, "t_0", fleet, "{}", "done"))
@@ -35,9 +35,9 @@ def test_a_successful_contract_lands_in_outcomes(tmp_path):
     n = record_outcomes(conn, [_Ev("worker_done", {
         "contract_id": "c_0001", "lane": "WR", "wall_s": 12.5,
         "cost": {"usd": 0.031, "quota_units": 1.0},
-        "v1": {"pass": True, "checks": []}})])
+        "v1": {"pass": True, "checks": []}})], "t_0")
     assert n == 1
-    row = conn.execute("SELECT * FROM outcomes WHERE contract_id='c_0001'").fetchone()
+    row = conn.execute("SELECT * FROM outcomes WHERE contract_id='t_0:c_0001'").fetchone()
     assert row["v1_pass"] == 1
     assert abs(row["cost_usd"] - 0.031) < 1e-9
     assert abs(row["wall_s"] - 12.5) < 1e-9
@@ -51,7 +51,7 @@ def test_a_failed_verification_is_recorded_as_a_failure_not_skipped(tmp_path):
     _seed_contract(conn)
     record_outcomes(conn, [_Ev("verify_failed", {
         "contract_id": "c_0001", "lane": "WR", "wall_s": 4.0,
-        "cost": {"usd": 0.01}, "detail": {"pass": False, "checks": []}})])
+        "cost": {"usd": 0.01}, "detail": {"pass": False, "checks": []}})], "t_0")
     assert conn.execute("SELECT v1_pass FROM outcomes").fetchone()["v1_pass"] == 0
     conn.close()
 
@@ -64,7 +64,7 @@ def test_an_unpriced_lane_records_null_cost_not_zero(tmp_path):
     record_outcomes(conn, [_Ev("worker_done", {
         "contract_id": "c_0001", "lane": "W3", "wall_s": 20.0,
         "cost": {"wall_s": 20.0},                       # no usd key at all
-        "v1": {"pass": True, "checks": []}})])
+        "v1": {"pass": True, "checks": []}})], "t_0")
     row = conn.execute("SELECT cost_usd FROM outcomes").fetchone()
     assert row["cost_usd"] is None, "unknown cost must stay NULL, never 0.0"
     conn.close()
@@ -80,10 +80,28 @@ def test_one_row_per_contract_even_after_a_retry(tmp_path):
                               "cost": {"usd": 0.01}, "detail": {"pass": False}}),
         _Ev("worker_done", {"contract_id": "c_0001", "lane": "WR", "wall_s": 9.0,
                             "cost": {"usd": 0.02}, "v1": {"pass": True}}),
-    ])
+    ], "t_0")
     assert n == 1
     rows = conn.execute("SELECT v1_pass, cost_usd FROM outcomes").fetchall()
     assert len(rows) == 1 and rows[0]["v1_pass"] == 1
+    conn.close()
+
+
+def test_contract_ids_are_namespaced_by_task(tmp_path):
+    """The executive names contracts locally and, observed live, called every one
+    `c_0001`. Without qualification four tasks collapse into one PRIMARY KEY row and
+    each overwrites the last, capping per-contract accounting at however many names the
+    model happens to invent."""
+    from contracts.store import ContractStore
+    conn = connect(tmp_path / "c.db"); migrate(conn)
+    for task in ("t_a", "t_b"):
+        _seed_contract(conn, cid=ContractStore.row_id(task, "c_0001"))
+        record_outcomes(conn, [_Ev("worker_done", {
+            "contract_id": "c_0001", "lane": "WR", "wall_s": 1.0,
+            "cost": {"usd": 0.01}, "v1": {"pass": True}})], task)
+    assert conn.execute("SELECT COUNT(*) n FROM outcomes").fetchone()["n"] == 2, \
+        "two tasks naming the same contract must not collapse into one row"
+    assert ContractStore.row_id("t_a", "t_a:c_0001") == "t_a:c_0001", "namespacing is idempotent"
     conn.close()
 
 
@@ -93,12 +111,12 @@ def test_w3_contracts_can_be_persisted_at_all(tmp_path):
     stored -- and because `outcomes` has a foreign key onto `contracts`, no W3 result
     could be recorded either. Migration 002 fixes it; this pins it."""
     conn = connect(tmp_path / "c.db"); migrate(conn)
-    _seed_contract(conn, cid="c_w3", fleet="W3")
-    assert conn.execute("SELECT fleet FROM contracts WHERE id='c_w3'").fetchone()["fleet"] == "W3"
+    _seed_contract(conn, cid="t_0:c_w3", fleet="W3")
+    assert conn.execute("SELECT fleet FROM contracts WHERE id='t_0:c_w3'").fetchone()["fleet"] == "W3"
     conn.close()
 
 
 def test_events_without_a_contract_are_ignored(tmp_path):
     conn = connect(tmp_path / "c.db"); migrate(conn)
-    assert record_outcomes(conn, [_Ev("task_received", {"objective": "x"})]) == 0
+    assert record_outcomes(conn, [_Ev("task_received", {"objective": "x"})], "t_0") == 0
     conn.close()

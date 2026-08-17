@@ -91,6 +91,7 @@ class RawAdapter:
 
         client = self._client()
         usd = 0.0
+        tokens_in = tokens_out = 0
         calls_made = 0
         max_calls = int(budget.get("tool_calls", 40))
         max_usd = float(budget.get("tokens_usd", 1.0))
@@ -117,10 +118,22 @@ class RawAdapter:
                               {"wall_s": time.time() - started, "usd": usd},
                               lane=self.lane, model=model)
 
-            usd += float(getattr(resp, "usage", None) and getattr(resp.usage, "cost", 0.0) or 0.0)
+            # `usage.cost` is an OpenRouter field. The z.ai coding endpoint does not
+            # return it, so this read produced 0.0 on EVERY call and `usd` was always
+            # exactly zero -- which silently made success-per-dollar, M0's headline
+            # metric and the spec's stated basis for the founding claim, uncomputable.
+            # Tokens are what the endpoint actually reports, so tokens are what we count.
+            # Dollars are derived only where a price is configured; an unpriced model
+            # yields None, never 0.0, because "free" and "unknown" are different claims.
+            u = getattr(resp, "usage", None)
+            if u is not None:
+                tokens_in += int(getattr(u, "prompt_tokens", 0) or 0)
+                tokens_out += int(getattr(u, "completion_tokens", 0) or 0)
+                usd += float(getattr(u, "cost", 0.0) or 0.0)
             msg = resp.choices[0].message
             messages.append(msg.model_dump(exclude_none=True))
-            self.trace.append({"step": calls_made, "usd": round(usd, 6),
+            self.trace.append({"step": calls_made, "tokens_in": tokens_in,
+                               "tokens_out": tokens_out,
                                "finish_reason": resp.choices[0].finish_reason})
 
             if not getattr(msg, "tool_calls", None):
@@ -148,7 +161,13 @@ class RawAdapter:
             status=status,
             artifacts={"diff": diff, "summary": final_text[:4000],
                        "tool_calls": box.calls},
-            raw_cost={"usd": round(usd, 6), "wall_s": round(time.time() - started, 2),
+            # The `usd` key is OMITTED when the endpoint priced nothing, rather than set
+            # to None: the kernel meters with `cost.get("usd", 0.0)`, and a present-but-None
+            # value defeats that default. Absent means unknown to every reader -- the meter
+            # charges zero, and the outcome recorder writes NULL rather than 0.0.
+            raw_cost={**({"usd": round(usd, 6)} if usd else {}),
+                      "tokens_in": tokens_in, "tokens_out": tokens_out,
+                      "wall_s": round(time.time() - started, 2),
                       "quota_units_est": 0.0, "tool_calls": calls_made},
             refusal_signal=refusal,
             lane=self.lane,

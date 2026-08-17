@@ -53,6 +53,8 @@ class M0Result:
     v1_pass: bool
     attempts: int
     usd: float
+    tokens_in: int
+    tokens_out: int
     wall_s: float
     files_touched: list[str] = field(default_factory=list)
     test_weakening: list[str] = field(default_factory=list)
@@ -69,6 +71,7 @@ def run_one(contract: dict, adapter, registry: Registry, workdir: Path) -> M0Res
             "output_schema": "diff+summary", "budget": FIXED_BUDGET,
             "verification": ["V1:pytest"]}
     started, usd, attempts = time.time(), 0.0, 0
+    tok_in = tok_out = 0
     v1: dict = {}
     result = None
 
@@ -78,7 +81,10 @@ def run_one(contract: dict, adapter, registry: Registry, workdir: Path) -> M0Res
         try:
             with Worktree(contract["repo"], contract.get("base_ref", "HEAD"), wt):
                 result = adapter.run(spec, wt)
-                usd += float((result.raw_cost or {}).get("usd", 0.0))
+                rc = result.raw_cost or {}
+                usd += float(rc.get("usd") or 0.0)
+                tok_in += int(rc.get("tokens_in") or 0)
+                tok_out += int(rc.get("tokens_out") or 0)
                 v1 = V1Runner().run_v1(spec, result, wt)
         except Exception as e:  # noqa: BLE001
             v1 = {"pass": False, "checks": [{"check": "harness", "pass": False, "detail": str(e)}]}
@@ -93,6 +99,8 @@ def run_one(contract: dict, adapter, registry: Registry, workdir: Path) -> M0Res
         v1_pass=bool(v1.get("pass")),
         attempts=attempts,
         usd=round(usd, 6),
+        tokens_in=tok_in,
+        tokens_out=tok_out,
         wall_s=round(time.time() - started, 1),
         files_touched=scope.get("files_touched", []),
         test_weakening=scope.get("test_weakening", []),
@@ -108,13 +116,20 @@ def success_per_dollar(results: list[M0Result]) -> dict:
     """
     honest = [r for r in results if r.v1_pass and not r.test_weakening]
     spend = sum(r.usd for r in results)
+    mtok = sum(r.tokens_in + r.tokens_out for r in results) / 1e6
     return {
         "contracts": len(results),
         "v1_passed": sum(1 for r in results if r.v1_pass),
         "honest_successes": len(honest),
         "disqualified_for_test_weakening": sum(1 for r in results if r.test_weakening),
-        "total_usd": round(spend, 4),
+        "total_usd": round(spend, 4) if spend else None,
+        # None, not 0.0. The endpoint reports tokens, not dollars, and no price table is
+        # configured -- so dollars are UNKNOWN, which is not the same claim as free. A
+        # zero here would divide into an infinite success-per-dollar and make an unpriced
+        # arm look perfect, which is how a comparison invents its own winner.
         "success_per_dollar": round(len(honest) / spend, 2) if spend else None,
+        "total_mtok": round(mtok, 4),
+        "successes_per_mtok": round(len(honest) / mtok, 2) if mtok else None,
         "mean_wall_s": round(sum(r.wall_s for r in results) / len(results), 1) if results else 0,
     }
 

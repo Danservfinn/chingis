@@ -60,7 +60,7 @@ def build_adapters(registry: Registry) -> dict:
 TERMINAL_EVENTS = ("worker_done", "verify_failed", "worker_failed", "worker_refused")
 
 
-def record_outcomes(conn, events) -> int:
+def record_outcomes(conn, events, task_id: str) -> int:
     """Write one `outcomes` row per contract. Returns how many contracts were recorded.
 
     This existed as `DecisionLog.record_outcome` and was called from nowhere, so the
@@ -72,6 +72,7 @@ def record_outcomes(conn, events) -> int:
     unknown case would give an unpriced lane an infinite success-per-dollar and hand
     whichever arm used it a win it did not earn.
     """
+    from contracts.store import ContractStore
     from kernel.decision_log import DecisionLog
     log = DecisionLog(conn)
     latest: dict[str, dict] = {}
@@ -84,7 +85,7 @@ def record_outcomes(conn, events) -> int:
             continue
         cost = p.get("cost") or {}
         v1 = p.get("v1") or p.get("detail") or {}
-        latest[cid] = {
+        latest[ContractStore.row_id(task_id, cid)] = {
             "v1_pass": bool(v1.get("pass")),
             "v1_detail": v1,
             # .get, never `or 0.0`: absent means unknown, and unknown is not free.
@@ -150,7 +151,7 @@ def cmd_submit(args) -> int:
                        model=getattr(executive, "model", executive.name),
                        latency_ms=rt.decision_latencies[i] if i < len(rt.decision_latencies) else None)
 
-    recorded = record_outcomes(conn, rt.bus.processed)
+    recorded = record_outcomes(conn, rt.bus.processed, task_id)
 
     print("\n== events ==")
     for e in rt.bus.processed:

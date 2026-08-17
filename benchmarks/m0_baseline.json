@@ -1,0 +1,84 @@
+{
+  "lane": "WR",
+  "fixed_retries": 1,
+  "budget": {
+    "wall_min": 8,
+    "quota_units": 1,
+    "tokens_usd": 0.5,
+    "tool_calls": 20,
+    "inlane_retries": 0
+  },
+  "summary": {
+    "contracts": 4,
+    "v1_passed": 4,
+    "honest_successes": 4,
+    "disqualified_for_test_weakening": 0,
+    "total_usd": null,
+    "success_per_dollar": null,
+    "total_mtok": 0.1265,
+    "successes_per_mtok": 31.62,
+    "mean_wall_s": 70.0
+  },
+  "results": [
+    {
+      "contract_id": "c_0001",
+      "status": "done",
+      "v1_pass": true,
+      "attempts": 1,
+      "usd": 0.0,
+      "tokens_in": 34321,
+      "tokens_out": 1221,
+      "wall_s": 64.2,
+      "files_touched": [
+        "backend/tests/test_text_stats.py",
+        "backend/text_stats.py"
+      ],
+      "test_weakening": []
+    },
+    {
+      "contract_id": "c_0002",
+      "status": "done",
+      "v1_pass": true,
+      "attempts": 1,
+      "usd": 0.0,
+      "tokens_in": 11662,
+      "tokens_out": 1313,
+      "wall_s": 53.6,
+      "files_touched": [
+        "backend/pagination.py",
+        "backend/tests/test_pagination.py"
+      ],
+      "test_weakening": []
+    },
+    {
+      "contract_id": "c_0003",
+      "status": "done",
+      "v1_pass": true,
+      "attempts": 1,
+      "usd": 0.0,
+      "tokens_in": 16614,
+      "tokens_out": 2526,
+      "wall_s": 93.0,
+      "files_touched": [
+        "backend/retry_util.py",
+        "backend/tests/test_retry_util.py"
+      ],
+      "test_weakening": []
+    },
+    {
+      "contract_id": "c_0004",
+      "status": "done",
+      "v1_pass": true,
+      "attempts": 1,
+      "usd": 0.0,
+      "tokens_in": 57677,
+      "tokens_out": 1149,
+      "wall_s": 69.2,
+      "files_touched": [
+        "backend/api_config.py",
+        "backend/tests/test_api_config.py"
+      ],
+      "test_weakening": []
+    }
+  ]
+}

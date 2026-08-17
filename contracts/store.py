@@ -59,15 +59,33 @@ class ContractStore:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self.conn = conn
 
+    @staticmethod
+    def row_id(task_id: str, contract_id: str) -> str:
+        """The stored key: the executive's contract name, qualified by its task.
+
+        The executive names contracts LOCALLY -- observed live on 2026-08-17, it called
+        every single one `c_0001`. `contracts.id` is a PRIMARY KEY, so four separate
+        tasks collapsed into one row and each overwrote the last; `outcomes` has a
+        foreign key onto it and collapsed with it. Per-contract accounting was therefore
+        capped at however many distinct names the model happened to invent, which is not
+        a number any experiment should depend on.
+
+        Qualifying by task makes the key unique without asking the model to be careful,
+        which is the right place for the fix: a naming convention the executive must
+        remember is a naming convention it will eventually forget.
+        """
+        return contract_id if contract_id.startswith(f"{task_id}:") else f"{task_id}:{contract_id}"
+
     def put(self, contract: dict, task_id: str, ts: str, status: str = "pending") -> str:
         validate(contract)
+        rid = self.row_id(task_id, contract["contract_id"])
         self.conn.execute(
             "INSERT OR REPLACE INTO contracts (id, task_id, fleet, spec_json, status, created_ts)"
             " VALUES (?,?,?,?,?,?)",
-            (contract["contract_id"], task_id, contract["lane"],
+            (rid, task_id, contract["lane"],
              json.dumps(contract, sort_keys=True), status, ts),
         )
-        return contract["contract_id"]
+        return rid
 
     def set_status(self, contract_id: str, status: str) -> None:
         self.conn.execute("UPDATE contracts SET status = ? WHERE id = ?", (status, contract_id))

@@ -181,12 +181,15 @@ GOOD = {"contract_id": "c_0001", "lane": "WR", "objective": "Add a docstring.",
 
 
 def test_valid_contract_roundtrips(conn):
+    """`put` returns the STORED id, which is task-qualified: the executive names
+    contracts locally and reuses those names across tasks."""
     s = ContractStore(conn)
-    s.put(GOOD, "t1", "2026-08-06T12:00:00Z")
-    assert s.get("c_0001")["objective"] == "Add a docstring."
+    rid = s.put(GOOD, "t1", "2026-08-06T12:00:00Z")
+    assert rid == "t1:c_0001"
+    assert s.get(rid)["objective"] == "Add a docstring."
     assert s.for_task("t1")[0]["lane"] == "WR"
-    s.set_status("c_0001", "done")
-    assert s.by_status("done") == ["c_0001"]
+    s.set_status(rid, "done")
+    assert s.by_status("done") == [rid]
 
 
 @pytest.mark.parametrize("mutate,match", [
@@ -223,7 +226,7 @@ def test_runtime_persists_contracts(conn, tmp_path):
         contract_store=store, workdir=tmp_path / "wt")
     rt.submit("thing")
     asyncio.run(rt.run())
-    assert store.get("c_0001") is not None, "the contract did not survive the task"
+    assert store.for_task("t_store"), "the contract did not survive the task"
 
 
 # ================================================================== ratchet ====
