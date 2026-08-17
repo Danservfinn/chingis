@@ -281,52 +281,30 @@ def test_cli_exposes_the_operator_surface():
         assert hasattr(cli, f"cmd_{cmd}"), f"no operator command for {cmd}"
 
 
-def test_w1_and_w2_are_two_distinct_labs():
-    """The whole premise of cross-fleet verification. W1 and W2 run the SAME packaged tool
-    and differ only by environment, so this is the one property that can be silently lost.
+def test_lane_set_is_the_one_the_operator_expects():
+    """The Claude Code lanes (W1 native Anthropic, W2 -> Z.ai) were removed 2026-08-17.
+    Pinned so a lane cannot reappear or vanish unnoticed: the set is what the executive
+    routes over, and B0's numbers are no longer reproducible on this machine precisely
+    because two of its lanes are gone."""
+    import cli
+    from kernel.capabilities import Registry
+    assert set(cli.build_adapters(Registry())) == {"WR", "W3", "W0"}
 
-    Kept after B0's FAIL verdict dropped V2: the property still guards every future
-    lab-contrast experiment, and a collapsed W1/W2 would corrupt one silently.
-    """
+
+def test_no_two_lanes_silently_share_a_lab():
+    """The property the deleted W1/W2 contamination guard existed to protect, kept alive
+    for the lanes that remain. If a future experiment reads 'two lanes' as 'two labs' it
+    measures self-review and calls it cross-review -- which is exactly how B0 could have
+    been corrupted silently."""
     import cli
     from kernel.capabilities import Registry
     lanes = cli.build_adapters(Registry())
-    assert {"WR", "W1", "W2", "W3", "W0"} == set(lanes)
-    assert lanes["W1"].lab == "anthropic"
-    assert "z.ai" in lanes["W2"].endpoint.lower()
+    # WR and W3 both default to z.ai today. That is deliberate (metered vs own-loop is
+    # the contrast), and it means they are NOT a lab contrast. Assert it so nobody
+    # mistakes lane-diversity for lab-diversity.
+    assert lanes["W3"].provider == "zai"
+    assert "z.ai" in lanes["WR"].base_url
 
-
-def test_w3_default_route_does_not_impersonate_a_second_lab():
-    """W3's default route is z.ai -- the SAME lab as W2. That is deliberate (metered vs
-    flat is the point), but it means a W2/W3 pairing varies the SHELL, not the lab. If a
-    future experiment ever reads 'two lanes' as 'two labs' it will measure self-review
-    and call it cross-review, which is the exact error `assert_native` exists to stop."""
-    import cli
-    from kernel.capabilities import Registry
-    w3 = cli.build_adapters(Registry())["W3"]
-    assert w3.provider == "zai"
-    assert "z.ai" in cli.build_adapters(Registry())["W2"].endpoint.lower()
-
-
-def test_redirect_vars_cannot_silently_collapse_w1_into_w2(monkeypatch):
-    """If ANTHROPIC_BASE_URL leaks in, W1 runs against the same lab as W2 and B0 reports
-    'cross-fleet' while measuring self-review -- a wrong number that looks like a right
-    one. It must fail loudly instead."""
-    from adapters.claude_adapter import ClaudeAdapter, FleetContamination, assert_native
-    for var in ("ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY"):
-        monkeypatch.setenv(var, "https://api.z.ai/api/anthropic")
-        with pytest.raises(FleetContamination, match="same lab"):
-            assert_native()
-        ok, msg = ClaudeAdapter().healthcheck()
-        assert not ok and "same lab" in msg
-        monkeypatch.delenv(var)
-
-
-def test_clean_env_strips_every_redirect(monkeypatch):
-    from adapters.claude_adapter import REDIRECT_VARS, _clean_env
-    for v in REDIRECT_VARS:
-        monkeypatch.setenv(v, "x")
-    assert not (set(REDIRECT_VARS) & set(_clean_env()))
 
 
 def test_operator_owns_the_blast_radius(conn, tmp_path):

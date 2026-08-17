@@ -71,8 +71,6 @@ cannot close from inside.
 | Lane | Transport | State |
 |---|---|---|
 | **WR** (raw, primary) | Z.ai coding endpoint, `ZAI_API_KEY` | **live** — verified end-to-end: real model, kernel-gated tool loop, real worktree, V1 green |
-| **W2** (GLM fleet) | Claude Code headless → Z.ai Anthropic endpoint | wired; unexercised |
-| **W1** (second lab) | Claude Code headless → Anthropic, native | **live** — substituted for the Codex fleet, whose free-tier allowance is spent until ~2026-09-01. B0 ran on this substitution, so its numbers measure **Anthropic ↔ GLM** (`DEVIATIONS.md` D1) |
 | **W3** (dsh fleet) | `dsh --profile headless` → pi-ai → `zai` \| `anthropic` \| `xai` \| `deepseek` | **live** — verified end-to-end 2026-08-17 on `zai/glm-5.3`: real diff, V1 green, screen held, replay intact. Only `ZAI_API_KEY` is set; the other three routes are a key away |
 | **W0** (local) | MLX / LM Studio | no server running |
 
@@ -84,8 +82,9 @@ shell is open source but **opaque in practice**: the stock session log carries t
 header only, so it is judged by its diff like every other packaged lane. See
 [`fleets/dsh/README.md`](fleets/dsh/README.md) and [`fleets/dsh/DECISIONS.md`](fleets/dsh/DECISIONS.md).
 
-B0 ran on the W1 substitution above, so its result is Anthropic ↔ GLM and would not be a
-valid floor for a Codex ↔ GLM pairing if Codex is ever restored.
+**The Claude Code lanes (W1, W2) were removed 2026-08-17.** B0 ran on them, so its result
+is valid history that can no longer be reproduced on this machine. Anthropic, xAI, and
+DeepSeek are each one key away through W3, with no new adapter needed.
 
 **The same trap still applies to any successor experiment, and now has a new mouth.** W3's
 default route is `zai` — the *same lab* as W2. A W2/W3 pairing therefore varies the shell,

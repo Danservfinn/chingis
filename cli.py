@@ -20,9 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from adapters.claude_adapter import ClaudeAdapter            # noqa: E402
 from adapters.dsh_adapter import DshAdapter                  # noqa: E402
-from adapters.glm_cc_adapter import GlmCodeAdapter          # noqa: E402
 from adapters.local_adapter import LocalAdapter             # noqa: E402
 from adapters.raw_adapter import RawAdapter                 # noqa: E402
 from contracts.store import ContractStore                   # noqa: E402
@@ -41,17 +39,19 @@ from verify.v1_runners import V1Runner                      # noqa: E402
 
 
 def build_adapters(registry: Registry) -> dict:
-    # W1 and W2 run the SAME packaged tool against DIFFERENT labs, so the cross-fleet
-    # contrast varies only the lab. See adapters/claude_adapter.py for why that is a
-    # better pairing than the Codex-vs-GLM one the plan specified.
-    #
-    # W3 is a THIRD packaged shell (dsh) whose route is a string: one adapter reaches
-    # z.ai, Anthropic, xAI, and DeepSeek. After B0's FAIL verdict it is justified on
-    # routing grounds only -- metered billing beside the flat-rate fleets, and a
-    # reroute target for refusals that needs no new subscription. It is NOT a
-    # verification lane. See adapters/dsh_adapter.py.
-    return {"WR": RawAdapter(registry), "W1": ClaudeAdapter(),
-            "W2": GlmCodeAdapter(), "W3": DshAdapter(), "W0": LocalAdapter()}
+    """The lane set. Two workers and a local summarizer.
+
+    The Claude Code lanes (W1 native Anthropic, W2 -> Z.ai) were removed 2026-08-17 at
+    operator direction. Both drove the same third-party CLI, whose inner shell Chingis
+    could neither see nor pin, and whose model on W2 was a mapping z.ai owned rather than
+    one we selected -- W2 had been labelled glm-5.2 for months while actually serving
+    glm-4.7. What replaces them is the same reach with fewer moving parts: W3 routes to
+    Anthropic, xAI, and DeepSeek by changing one string, given a key.
+
+    Consequence carried deliberately: B0's numbers were generated on W1/W2 and remain
+    valid history, but they can no longer be reproduced on this machine.
+    """
+    return {"WR": RawAdapter(registry), "W3": DshAdapter(), "W0": LocalAdapter()}
 
 
 def cmd_health(args) -> int:

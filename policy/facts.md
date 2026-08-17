@@ -13,8 +13,6 @@ rule. (Spec §6)
 | Lane | Billing | Opacity | Notes |
 |---|---|---|---|
 | WR | Metered per token | None — every step is in the audit log | The faithful path. Chingis-owned tool loop: `bash`, `read_file`, `apply_patch`, worktree-scoped. |
-| W1 | Flat-rate (Claude subscription) | Fixed inner shell, not inspectable | **Anthropic.** Claude Code headless, native. Same tool as W2, different lab — the cross-fleet contrast varies only the lab. |
-| W2 | Flat-rate (GLM Coding Plan) | Fixed inner shell, not inspectable | **Z.ai / GLM.** Claude Code headless → Z.ai endpoint. Quota is prompt-based with peak multipliers. |
 | W3 | **Metered per token — real USD**, unlike the flat fleets | Fixed inner shell, not inspectable *in practice* (see below) | **Any of four labs.** dsh headless; route selected per contract as `model: "provider/model"` over `zai`, `anthropic`, `xai`, `deepseek`. Consumes **no plan quota** — this is the lane to reach for when quota is the binding constraint and dollars are not, and the reroute target when a fleet refuses. |
 | W0 | Electricity | None | Local MLX. Summarize, triage, injection pre-screen, shadow scoring. |
 
@@ -32,14 +30,14 @@ rule. (Spec §6)
 
 ## Refusal tendencies
 
-- W1 (Codex/Sol stack): refuses on crypto-adjacent and security-flavored material.
-  Expected background noise, not a failure. One hop to reroute.
+- Refusal tendencies per fleet are **unmeasured since 2026-08-17**: the W1/W2
+  observations were made on the Claude Code lanes, which no longer exist.
 - Refusal detection is heuristic per fleet — exit codes, phrase patterns, and the
   empty-diff-with-explanation shape. Every detection is logged for tuning.
-- **W3 is the cheapest reroute after any refusal**: the next lab is a string in the
-  contract's `model` field, not a new adapter or a new subscription. Rerouting a refused
-  contract from W1 to `W3 anthropic/...` keeps the lab and changes the shell; rerouting
-  to `W3 xai/...` or `W3 deepseek/...` changes the lab outright.
+- **W3 is now the ONLY reroute after a refusal**, and the next lab is a string in the
+  contract's `model` field. With the Claude Code lanes gone, `W3 anthropic/...`,
+  `W3 xai/...`, and `W3 deepseek/...` each need their own key set; none is today, so a
+  refusal on WR or W3-zai currently has **nowhere to go but the operator**.
 
 ## Model tiers
 
@@ -49,7 +47,7 @@ rule. (Spec §6)
 | Sol | Escalation rung — **no transport**. Not offered on the current Codex plan. Escalate to the operator instead. | n/a |
 | Terra | Mid-tier worker duty on W1 | Flat under plan |
 | GLM-5.3 | WR worker duty, W3 default route. **Reasoning model** — it spends completion tokens on reasoning before any content, so a small `max_tokens` returns empty content rather than a short answer. Absent from pi-ai's installed catalog, so `w3.cordis.yml` declares it. | Metered on WR and W3 |
-| GLM-4.7 | **W2's actual inner model**, measured 2026-08-17 by probing the Z.ai Anthropic endpoint. W2 is a mapping z.ai owns, not a model we select. | Flat under the coding plan |
+| GLM-4.7 | Was W2's inner model. **W2 removed 2026-08-17.** Still reachable directly at the Z.ai Anthropic endpoint, and used as a second reviewer identity in B0.2. | Metered |
 | Claude / Grok / DeepSeek | Reachable **only** through W3 today; each needs its own key set (`ANTHROPIC_API_KEY`, `XAI_API_KEY`, `DEEPSEEK_API_KEY`). Unset keys are refused by the adapter before launch, so an unconfigured route is a lane outage, not a worker failure. | Metered |
 
 ## Network containment — what `net:none` actually means (2026-08-17)
@@ -87,6 +85,24 @@ Stated so the executive can reason about its own uncertainty rather than confabu
 - Whether W3's inner loop can be made observable — its session log currently carries the
   session header only, so the lane is opaque in practice. Unmeasured.
 - Refusal rates per task type — unmeasured.
+
+## Lane removal — 2026-08-17
+
+The Claude Code lanes are gone at operator direction: **W1** (native Anthropic) and **W2**
+(Claude Code → Z.ai). Both drove the same third-party CLI whose inner shell Chingis could
+neither inspect nor pin, and W2's model was a mapping z.ai owned rather than one we chose
+— it had been labelled `glm-5.2` while actually serving `glm-4.7`.
+
+Consequences the executive should carry:
+
+- The lane set is **WR, W3, W0**. Two workers and a local summarizer.
+- **B0's numbers stay valid history and are no longer reproducible here**, because two of
+  its three lanes no longer exist.
+- **B0.2 cannot currently run.** Its reviewer identities were `glm-5.3`, `glm-4.7`, and
+  Anthropic-via-W1. The first two are one lab; the third needs `ANTHROPIC_API_KEY`
+  through W3. Two identities in one lab cannot separate reviewer identity from lineage.
+- Anthropic, xAI, and DeepSeek remain reachable *in principle* through W3 — each is one
+  key away, and no new adapter.
 
 ## Provider substitution — 2026-08-06
 

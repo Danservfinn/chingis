@@ -105,21 +105,34 @@ def review_glm47(prompt: str) -> str:
     return "".join(b.get("text", "") for b in r.get("content", []))
 
 
-def review_claude(prompt: str) -> str:
-    """W1's path: Claude Code headless, native Anthropic, subscription OAuth."""
-    from adapters.claude_adapter import _clean_env
-    p = subprocess.run([os.environ.get("CLAUDE_BIN", "claude"), "-p",
-                        "--output-format", "json"],
-                       input=prompt, capture_output=True, text=True, timeout=300,
-                       env=_clean_env())
-    try:
-        return json.loads(p.stdout).get("result", p.stdout)
-    except (json.JSONDecodeError, AttributeError):
-        return p.stdout or ""
+def review_anthropic(prompt: str) -> str:
+    """Anthropic native, through W3's pi-ai route. Requires ANTHROPIC_API_KEY.
+
+    This used to run through the W1 Claude Code lane. Those lanes were removed
+    2026-08-17, and reaching for the `claude` binary directly would reintroduce by the
+    back door exactly what was removed at the front -- so this path now needs a real key
+    like any other route, and says so when it does not have one.
+    """
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not key:
+        raise RuntimeError(
+            "ANTHROPIC_API_KEY unset. Anthropic was previously reached through the W1 "
+            "Claude Code lane, removed 2026-08-17. Without this key B0.2 has only ONE "
+            "lab and cannot separate reviewer identity from lineage."
+        )
+    r = _post("https://api.anthropic.com/v1/messages",
+              {"model": "claude-sonnet-4-5", "max_tokens": 4000,
+               "messages": [{"role": "user", "content": prompt}]},
+              {"x-api-key": key, "anthropic-version": "2023-06-01",
+               "Content-Type": "application/json"})
+    return "".join(b.get("text", "") for b in r.get("content", []))
 
 
+#: glm-5.3 and glm-4.7 are two identities in ONE lab (z.ai). anthropic is the only second
+#: lab available, and only with a key. Two identities in one lab cannot answer B0.2's
+#: question -- see results/preflight_report.md.
 REVIEWERS = {"glm-5.3": review_glm53, "glm-4.7": review_glm47,
-             "claude-sonnet": review_claude}
+             "anthropic": review_anthropic}
 
 
 def main() -> int:

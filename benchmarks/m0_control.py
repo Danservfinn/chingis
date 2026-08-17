@@ -30,16 +30,17 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from adapters.base import Worktree                      # noqa: E402
-from adapters.claude_adapter import ClaudeAdapter       # noqa: E402
 from adapters.dsh_adapter import DshAdapter             # noqa: E402
-from adapters.glm_cc_adapter import GlmCodeAdapter      # noqa: E402
 from adapters.raw_adapter import RawAdapter             # noqa: E402
 from kernel.capabilities import Registry                # noqa: E402
 from verify.v1_runners import V1Runner                  # noqa: E402
 
 #: The control arm's entire policy. Frozen on purpose -- every knob here is one Chingis has
 #: and M0 does not, and the comparison is only meaningful while these stay put.
-FIXED_LANE = "W1"
+# Was W1 (Claude Code) until those lanes were removed 2026-08-17. M0's POLICY
+# (fixed routing, fixed retry, no executive) is unchanged; only which fixed lane
+# it routes to moved, because the old one no longer exists.
+FIXED_LANE = "WR"
 FIXED_RETRIES = 1
 FIXED_BUDGET = {"wall_min": 8, "quota_units": 1, "tokens_usd": 0.50,
                 "tool_calls": 20, "inlane_retries": 0}
@@ -153,7 +154,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--contracts", type=Path)
-    ap.add_argument("--lane", default=FIXED_LANE, choices=["WR", "W1", "W2", "W3"])
+    ap.add_argument("--lane", default=FIXED_LANE, choices=["WR", "W3"])
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--compare", metavar="DB")
     args = ap.parse_args()
@@ -164,8 +165,7 @@ def main() -> int:
         ap.error("--contracts or --compare is required")
 
     registry = Registry()
-    adapter = {"WR": lambda: RawAdapter(registry), "W1": ClaudeAdapter,
-               "W2": GlmCodeAdapter, "W3": DshAdapter}[args.lane]()
+    adapter = {"WR": lambda: RawAdapter(registry), "W3": DshAdapter}[args.lane]()
 
     files = sorted(args.contracts.glob("c_*.json"))
     if args.limit:

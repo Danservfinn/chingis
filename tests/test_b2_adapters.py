@@ -8,6 +8,7 @@ to read outside the worktree must be denied by the capability check, NOT by mode
 
 from __future__ import annotations
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -15,7 +16,7 @@ import pytest
 
 from adapters.base import Result, Status, Worktree, detect_refusal
 from adapters.codex_adapter import CodexAdapter
-from adapters.glm_cc_adapter import GlmCodeAdapter
+from adapters.dsh_adapter import DshAdapter
 from adapters.local_adapter import LocalAdapter
 from adapters.raw_adapter import RawAdapter
 from adapters.tools import ToolBox, ToolCall
@@ -118,8 +119,8 @@ def test_apply_patch_writes_inside(box):
 # ------------------------------------------------------- one interface, all lanes ----
 def test_every_lane_implements_the_interface():
     lanes = [RawAdapter(Registry(Deps.deterministic())), CodexAdapter(),
-             GlmCodeAdapter(), LocalAdapter()]
-    assert {a.lane for a in lanes} == {"WR", "W1", "W2", "W0"}
+             DshAdapter(), LocalAdapter()]
+    assert {a.lane for a in lanes} == {"WR", "W1", "W3", "W0"}
     for a in lanes:
         assert callable(a.healthcheck) and callable(a.run)
         ok, msg = a.healthcheck()
@@ -129,7 +130,7 @@ def test_every_lane_implements_the_interface():
 def test_the_same_contract_dict_is_accepted_by_every_lane():
     """B2's literal criterion: one contract, unmodified, across lanes."""
     import inspect
-    for cls in (RawAdapter, CodexAdapter, GlmCodeAdapter, LocalAdapter):
+    for cls in (RawAdapter, CodexAdapter, DshAdapter, LocalAdapter):
         params = list(inspect.signature(cls.run).parameters)
         assert params[1:] == ["contract", "worktree"], f"{cls.__name__} has a divergent run()"
 
@@ -174,12 +175,13 @@ def test_worktree_is_disposable(repo, tmp_path):
     assert not wt_path.exists(), "the worktree is the blast radius; it must not survive"
 
 
-# ------------------------------------------------- artifact hygiene (W1/W2) ----
+# --------------------------------------------------------- artifact hygiene ----
 def test_tooling_artifacts_are_stripped_from_the_diff(tmp_path):
-    """The packaged lanes ARE Claude Code, and the operator's own plugins write into the
-    worktree. Without this, every W1/W2 artifact carries editor noise the reviewer reads
-    as part of the change -- and `src/CLAUDE.md` sits inside a `src/**` context_ref, so
-    diff_scope would not even flag it."""
+    """The operator's own plugins write into the worktree. Without this, a packaged
+    lane's artifact carries editor noise the reviewer reads as part of the change -- and
+    `src/CLAUDE.md` sits inside a `src/**` context_ref, so diff_scope would not even
+    flag it. Kept after the Claude Code lanes were removed: claude-mem still drops these
+    files wherever the operator works, and W3 runs in the same worktrees."""
     from adapters.base import strip_tooling_artifacts
 
     wt = tmp_path / "wt"
@@ -206,16 +208,18 @@ def test_a_contract_may_still_edit_a_real_claude_md(tmp_path):
     assert strip_tooling_artifacts(wt, tracked={"CLAUDE.md"}) == [], "pre-existing -> keep"
 
 
-def test_packaged_lanes_grant_edit_permission(tmp_path):
-    """Headless Claude Code will not write a file without a permission grant. Without it
-    the worker returns an explanation and no diff, which the refusal heuristic then
-    reports as a refusal -- a configuration error wearing a safety-refusal costume."""
-    import inspect
-    import re
-    from adapters import claude_adapter, glm_cc_adapter
-    for mod in (claude_adapter, glm_cc_adapter):
-        src = inspect.getsource(mod)
-        assert '"--permission-mode"' in src and '"acceptEdits"' in src
-        # Match the ARGUMENT, not the word: the docstring says "acceptEdits, not
-        # bypassPermissions", and a substring check on prose would fail on its own comment.
-        assert not re.search(r'"bypassPermissions"', src), "the grant must stay scoped"
+def test_the_packaged_lane_grants_write_but_keeps_the_sandbox():
+    """A headless packaged lane will not write without a permission grant; without one it
+    returns prose and no diff, which the refusal heuristic then reports as a refusal -- a
+    configuration error wearing a safety-refusal costume. The grant must stay SCOPED: W3
+    uses a named `workspace-write-unattended` preset, never `danger-full-access`, which
+    would drop the sandbox along with the prompt.
+
+    This replaces the equivalent test for the Claude Code lanes, removed 2026-08-17."""
+    from pathlib import Path as _P
+    yml = (_P(__file__).resolve().parent.parent / "fleets" / "dsh" / "w3.cordis.yml").read_text()
+    assert "policy: never" in yml, "headless has no one to answer an approval prompt"
+    assert "defaultPreset: workspace-write-unattended" in yml
+    assert "sandbox: workspace-write" in yml
+    assert not re.search(r"^\s*defaultPreset:\s*danger-full-access", yml, re.M), \
+        "the grant must remove the prompt, not the sandbox"
