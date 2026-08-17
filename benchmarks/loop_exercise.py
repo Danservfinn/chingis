@@ -72,22 +72,25 @@ def main() -> int:
 
     # ------------------------------------------------------- 2. V3 sampling --
     print("\n== 2. V3 spot-check sampling ==")
-    sc = SpotChecker({})
+    # Availability is CHECKED, not exercised: calling a metered reviewer once per
+    # diagnostic run would make the diagnostic the most expensive thing in the loop.
+    from cli import build_spotchecker
+    live = build_spotchecker()
+    sc = live or SpotChecker({})
     sampled = [r["contract_id"] for r, _ in scored if sc.should_check(r["contract_id"])]
-    print(f"  {len(sampled)}/{len(scored)} sampled at {sc.rate:.0%}: {sampled or '(none)'}")
+    print(f"  reviewer attached: {live is not None}")
+    print(f"  {len(sampled)}/{len(scored)} would sample at {sc.rate:.0%}: {sampled or '(none)'}")
+    recorded = sum(1 for r, _ in scored if r.get("v3_verdict"))
+    print(f"  {recorded}/{len(scored)} outcomes carry a recorded V3 verdict")
+    if live is None:
+        findings.append("no V3 reviewer is reachable, so the tier contributes a neutral "
+                        "0.5 to every score and verifies nothing.")
     for r, _ in scored:
         lane = r.get("fleet") or "WR"
         try:
-            fam = off_family_for(lane)
+            off_family_for(lane)
         except ValueError as e:
             findings.append(f"V3 cannot review lane {lane}: {e}")
-            continue
-        v = sc.check(r["contract_id"], lane, "objective", "diff")
-        if v.get("verdict") == "not_wired":
-            findings.append(
-                f"V3 returns verdict='not_wired' for {lane} (reviewer family {fam!r}): the "
-                "sampling logic is live but no reviewer is attached, so V3 contributes a "
-                "neutral 0.5 to every score and verifies nothing.")
             break
 
     # -------------------------------------------------------- 3. consolidate --

@@ -39,6 +39,25 @@ from kernel.screen import Screener                          # noqa: E402
 from verify.v1_runners import V1Runner                      # noqa: E402
 
 
+def build_spotchecker():
+    """V3 with a real reviewer when one is reachable, else the tier stays dark.
+
+    Nothing ever constructed a SpotChecker in the live path, so the tier's 5% sampling
+    sampled nothing and every outcome scored a neutral 0.5 for V3 -- one of the two
+    reasons the score carried a single live bit.
+    """
+    from verify.reviewers import anthropic_oauth
+    from verify.v3_spotcheck import SpotChecker
+    import shutil
+    if not shutil.which(os.environ.get("CLAUDE_BIN", "claude")):
+        return None
+    # Rate is overridable so the tier can be exercised deliberately. The DEFAULT stays
+    # 5%: V3 is metered attention, and a tier that reviews everything is V2 by another
+    # name -- which B0 already rejected.
+    rate = float(os.environ.get("V3_SAMPLE_RATE", SpotChecker({}).rate))
+    return SpotChecker({}, rate=rate, reviewer=anthropic_oauth)
+
+
 def build_screener(w0_factory=None) -> Screener:
     """Build the screener WITH its semantic layer when a local model is reachable.
 
@@ -107,7 +126,9 @@ def record_outcomes(conn, events, task_id: str) -> int:
             continue
         cost = p.get("cost") or {}
         v1 = p.get("v1") or p.get("detail") or {}
+        v3 = p.get("v3") or {}
         latest[ContractStore.row_id(task_id, cid)] = {
+            "v3_verdict": v3.get("verdict"),
             "v1_pass": bool(v1.get("pass")),
             "v1_detail": v1,
             # .get, never `or 0.0`: absent means unknown, and unknown is not free.
@@ -153,6 +174,7 @@ def cmd_submit(args) -> int:
         audit=AuditLog(conn), meters=Meters(usd=args.usd, quota_units=args.quota),
         registry=registry, ledger=ledger,
         policy=PolicyRuntime(), verifier=V1Runner(), screener=build_screener(),
+        spotchecker=build_spotchecker(),
         contract_store=ContractStore(conn), workdir=ROOT / ".worktrees",
     )
 

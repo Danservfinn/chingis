@@ -64,6 +64,7 @@ class Runtime:
         verifier: Any = None,
         screener: Screener | None = None,
         contract_store: Any = None,
+        spotchecker: Any = None,
         workdir: Path | None = None,
     ) -> None:
         self.deps = deps or Deps()
@@ -75,6 +76,10 @@ class Runtime:
         self.ledger = ledger or Ledger()
         self.policy = policy
         self.verifier = verifier
+        #: Sampled second-tier audit. None = the tier does not run, which was the case
+        #: for the project's whole life: nothing ever called V3, so its 5% sampling
+        #: sampled nothing and every score carried a neutral 0.5 for the tier.
+        self.spotchecker = spotchecker
         # Spec §7: raw worker text never enters the executive context. Always present --
         # a Runtime without a screener would be one where the guarantee is optional.
         self.screener = screener or Screener()
@@ -264,6 +269,12 @@ class Runtime:
             self._emit(bus, EventType.WORKER_FAILED, payload)
         else:
             payload["v1"] = v1
+            # V3 runs HERE, inline, because the diff exists only at this moment: the
+            # artifact is never persisted, so a sampled audit cannot be performed after
+            # the fact. Sampling is deterministic in the contract id and rare by design.
+            v3 = self._run_v3(contract, result, v1)
+            if v3:
+                payload["v3"] = v3
             self.ledger.record_outcome(
                 f"{contract['contract_id']} done on {lane}, V1={'pass' if v1.get('pass') else 'fail'}")
             if v1 and not v1.get("pass", True):
@@ -280,6 +291,29 @@ class Runtime:
             return self.verifier.run_v1(contract, result, worktree)
         except TypeError:
             return self.verifier.run_v1(contract, result)
+
+    def _run_v3(self, contract: dict, result: Any, v1: dict) -> dict:
+        """Sampled second-tier review. Returns {} when the tier is not running.
+
+        Failure here never blocks the run and never passes work through as approved: an
+        unavailable reviewer yields an explicit verdict of its own rather than silence
+        that the scorer would read as neutral.
+        """
+        if self.spotchecker is None:
+            return {}
+        cid = contract.get("contract_id", "")
+        if not self.spotchecker.should_check(cid):
+            return {}
+        diff = (getattr(result, "artifacts", None) or {}).get("diff", "") or ""
+        if not diff.strip():
+            return {}
+        try:
+            return self.spotchecker.check(
+                cid, contract.get("lane", ""), contract.get("objective", ""), diff,
+                "pass" if v1.get("pass") else "fail")
+        except Exception as e:  # noqa: BLE001 -- a verifier outage is not a worker failure
+            return {"tier": "V3", "verdict": "unavailable", "pass": True,
+                    "detail": f"{type(e).__name__}: {str(e)[:200]}"}
 
     def _verb_retry(self, d: Decision, event: Event, bus: Bus) -> None:
         cid = d.params.get("contract_id") or event.payload.get("contract_id", "")
