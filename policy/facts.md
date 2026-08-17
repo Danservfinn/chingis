@@ -14,7 +14,7 @@ rule. (Spec §6)
 |---|---|---|---|
 | WR | Metered per token | None — every step is in the audit log | The faithful path. Chingis-owned tool loop: `bash`, `read_file`, `apply_patch`, worktree-scoped. |
 | W3 | **Metered per token — real USD**, unlike the flat fleets | Fixed inner shell, not inspectable *in practice* (see below) | **Any of four labs.** dsh headless; route selected per contract as `model: "provider/model"` over `zai`, `anthropic`, `xai`, `deepseek`. Consumes **no plan quota** — this is the lane to reach for when quota is the binding constraint and dollars are not, and the reroute target when a fleet refuses. |
-| W0 | Electricity | None | Local MLX. Summarize, triage, injection pre-screen, shadow scoring. |
+| W0 | Electricity | None | Local model (ollama/MLX). Summarize, triage, injection pre-screen, shadow scoring. **DISABLED by default since 2026-08-17** — opt in with `CHINGIS_W0=on`. While off, the lane is absent from the lane set and the injection screen runs its structural and heuristic layers only. |
 
 ## Quota
 

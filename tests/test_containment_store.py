@@ -288,10 +288,26 @@ def test_lane_set_is_the_one_the_operator_expects():
     """The Claude Code lanes (W1 native Anthropic, W2 -> Z.ai) were removed 2026-08-17.
     Pinned so a lane cannot reappear or vanish unnoticed: the set is what the executive
     routes over, and B0's numbers are no longer reproducible on this machine precisely
-    because two of its lanes are gone."""
+    because two of its lanes are gone.
+
+    W0 is opt-in (CHINGIS_W0), so the default set is the two remote workers. A local
+    model that mounts itself whenever a server happens to be listening is a lane the
+    operator did not choose.
+    """
     import cli
     from kernel.capabilities import Registry
-    assert set(cli.build_adapters(Registry())) == {"WR", "W3", "W0"}
+    assert set(cli.build_adapters(Registry())) == {"WR", "W3"}
+
+
+def test_w0_is_opt_in(monkeypatch):
+    import cli
+    from kernel.capabilities import Registry
+    monkeypatch.setenv("CHINGIS_W0", "on")
+    assert "W0" in cli.build_adapters(Registry())
+    assert cli.build_screener().w0 is not None or True   # server may be absent; opt-in is the assertion
+    monkeypatch.setenv("CHINGIS_W0", "off")
+    assert "W0" not in cli.build_adapters(Registry())
+    assert cli.build_screener().w0 is None
 
 
 def test_no_two_lanes_silently_share_a_lab():

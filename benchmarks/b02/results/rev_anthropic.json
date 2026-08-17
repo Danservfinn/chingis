@@ -1,0 +1,92 @@
+[
+  {
+    "contract_id": "c_0007",
+    "generator": "W1",
+    "reviewer": "anthropic",
+    "seeded": true,
+    "crossed": false,
+    "findings": 2,
+    "status": "hit"
+  },
+  {
+    "contract_id": "c_0007",
+    "generator": "W2",
+    "reviewer": "anthropic",
+    "seeded": true,
+    "crossed": true,
+    "findings": 2,
+    "status": "hit"
+  },
+  {
+    "contract_id": "c_0008",
+    "generator": "W1",
+    "reviewer": "anthropic",
+    "seeded": true,
+    "crossed": false,
+    "findings": 1,
+    "status": "hit"
+  },
+  {
+    "contract_id": "c_0008",
+    "generator": "W2",
+    "reviewer": "anthropic",
+    "seeded": true,
+    "crossed": true,
+    "findings": 1,
+    "status": "hit"
+  },
+  {
+    "contract_id": "c_0009",
+    "generator": "W1",
+    "reviewer": "anthropic",
+    "seeded": true,
+    "crossed": false,
+    "findings": 0,
+    "status": "miss"
+  },
+  {
+    "contract_id": "c_0009",
+    "generator": "W2",
+    "reviewer": "anthropic",
+    "seeded": true,
+    "crossed": true,
+    "findings": 1,
+    "status": "ambiguous"
+  },
+  {
+    "contract_id": "c_0010",
+    "generator": "W1",
+    "reviewer": "anthropic",
+    "seeded": true,
+    "crossed": false,
+    "findings": 1,
+    "status": "ambiguous"
+  },
+  {
+    "contract_id": "c_0010",
+    "generator": "W2",
+    "reviewer": "anthropic",
+    "seeded": true,
+    "crossed": true,
+    "findings": 1,
+    "status": "ambiguous"
+  },
+  {
+    "contract_id": "c_0011",
+    "generator": "W1",
+    "reviewer": "anthropic",
+    "seeded": false,
+    "crossed": false,
+    "findings": 0,
+    "status": "clean_pass"
+  },
+  {
+    "contract_id": "c_0011",
+    "generator": "W2",
+    "reviewer": "anthropic",
+    "seeded": false,
+    "crossed": true,
+    "findings": 1,
+    "status": "false_flag"
+  }
+]

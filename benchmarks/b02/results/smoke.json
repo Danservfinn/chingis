@@ -1,0 +1,29 @@
+[
+  {
+    "contract_id": "c_0001",
+    "generator": "W1",
+    "reviewer": "anthropic",
+    "seeded": true,
+    "crossed": false,
+    "findings": 1,
+    "status": "hit"
+  },
+  {
+    "contract_id": "c_0001",
+    "generator": "W2",
+    "reviewer": "anthropic",
+    "seeded": true,
+    "crossed": true,
+    "findings": 1,
+    "status": "hit"
+  },
+  {
+    "contract_id": "c_0002",
+    "generator": "W1",
+    "reviewer": "anthropic",
+    "seeded": true,
+    "crossed": false,
+    "findings": 1,
+    "status": "hit"
+  }
+]

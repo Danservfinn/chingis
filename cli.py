@@ -39,6 +39,13 @@ from kernel.screen import Screener                          # noqa: E402
 from verify.v1_runners import V1Runner                      # noqa: E402
 
 
+#: One switch for every local-model consumer. Default OFF: W0 is opt-in, so nothing
+#: reaches for a local server unless the operator asked for it. Set CHINGIS_W0=on (or
+#: 1/true/yes) to re-enable both the W0 lane and the screener's semantic layer.
+def w0_enabled() -> bool:
+    return os.environ.get("CHINGIS_W0", "off").strip().lower() in ("on", "1", "true", "yes")
+
+
 def build_spotchecker():
     """V3 with a real reviewer when one is reachable, else the tier stays dark.
 
@@ -70,6 +77,11 @@ def build_screener(w0_factory=None) -> Screener:
     layers do not depend on W0, which is the design's own claim: screening degrades, it
     never disappears.
     """
+    if w0_factory is None and not w0_enabled():
+        # Disabled: the screen keeps its structural and heuristic layers, which is the
+        # posture it held for the project's whole life. Screening degrades; it never
+        # disappears.
+        return Screener(None)
     factory = w0_factory or (lambda: LocalAdapter(model=os.environ.get("W0_MODEL", "qwen3:0.6b")))
     try:
         w0 = factory()
@@ -92,7 +104,10 @@ def build_adapters(registry: Registry) -> dict:
     Consequence carried deliberately: B0's numbers were generated on W1/W2 and remain
     valid history, but they can no longer be reproduced on this machine.
     """
-    return {"WR": RawAdapter(registry), "W3": DshAdapter(), "W0": LocalAdapter()}
+    lanes = {"WR": RawAdapter(registry), "W3": DshAdapter()}
+    if w0_enabled():
+        lanes["W0"] = LocalAdapter()
+    return lanes
 
 
 #: Terminal per-contract events. A contract may produce several (a retry emits one each);
