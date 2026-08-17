@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -36,6 +37,27 @@ from kernel.replay import replay_task                       # noqa: E402
 from kernel.runtime import Runtime                          # noqa: E402
 from kernel.screen import Screener                          # noqa: E402
 from verify.v1_runners import V1Runner                      # noqa: E402
+
+
+def build_screener(w0_factory=None) -> Screener:
+    """Build the screener WITH its semantic layer when a local model is reachable.
+
+    `cmd_submit` used to call `Screener()` with no argument, so layer 3 could never run
+    -- not because W0 was offline, but because it was never handed over. Every live run
+    in the system's history reported `screened_by=heuristic`, which read as "no server"
+    and was actually "not wired". A down lane masked a wiring gap.
+
+    Failure here costs the semantic layer and nothing else. The structural and heuristic
+    layers do not depend on W0, which is the design's own claim: screening degrades, it
+    never disappears.
+    """
+    factory = w0_factory or (lambda: LocalAdapter(model=os.environ.get("W0_MODEL", "qwen3:0.6b")))
+    try:
+        w0 = factory()
+        ok, _ = w0.healthcheck() if hasattr(w0, "healthcheck") else (True, "")
+        return Screener(w0 if ok else None)
+    except Exception:                                   # noqa: BLE001
+        return Screener(None)
 
 
 def build_adapters(registry: Registry) -> dict:
@@ -130,7 +152,7 @@ def cmd_submit(args) -> int:
         task_id, executive, adapters,
         audit=AuditLog(conn), meters=Meters(usd=args.usd, quota_units=args.quota),
         registry=registry, ledger=ledger,
-        policy=PolicyRuntime(), verifier=V1Runner(), screener=Screener(),
+        policy=PolicyRuntime(), verifier=V1Runner(), screener=build_screener(),
         contract_store=ContractStore(conn), workdir=ROOT / ".worktrees",
     )
 
