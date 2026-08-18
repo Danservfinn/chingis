@@ -129,13 +129,21 @@ def main() -> int:
     # Merge, never overwrite: a long run is executed in batches, and a batch that clobbers
     # its predecessors turns a resumable run into a restart.
     rows: list[dict] = json.loads(dest.read_text()) if dest.exists() else []
+    # Resume by CONTENT, not by offset. An offset is only correct if you know exactly
+    # where the last batch stopped, and the first batch of this run stopped without
+    # persisting -- so six reviews were paid for and lost. Skipping triples that are
+    # already recorded makes every re-invocation idempotent and cheap.
+    done = {(r["contract_id"], r["generator"], r["reviewer"]) for r in rows}
     for name in names:
-        for i, item in enumerate(items, 1):
+        todo = [it for it in items if (it["contract_id"], it["generator"], name) not in done]
+        print(f"  [{name}] {len(items) - len(todo)} already recorded, {len(todo)} to run",
+              flush=True)
+        for i, item in enumerate(todo, 1):
             r = review(item, name, tol)
             rows.append(r)
             dest.write_text(json.dumps(rows, indent=2))   # durable per review
             print(f"  [{name}] {item['contract_id']}/{item['generator']:<3} "
-                  f"{r['status']:<14} ({i}/{len(items)})", flush=True)
+                  f"{r['status']:<14} ({i}/{len(todo)})", flush=True)
         dest.write_text(json.dumps(rows, indent=2))
     report(rows)
     return 0
